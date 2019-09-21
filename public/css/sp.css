@@ -23,7 +23,7 @@
 
     section#profile {
         margin: auto;
-        max-height: 80vh;
+        max-height: 99vh;
         padding: 1em;
         overflow: scroll;
     }
