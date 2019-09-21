@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1,user-scalable=no">
   <title>ryomak</title>
+  
   <meta property="og:url" content="https://ryomak.github.io/" />
   <meta property="og:type" content="website">
   <meta property="og:title" content="ryomak">
   <meta property="og:description" content="ryomak's portfolio" />
-  <meta property="og:image" content="https://ryomak.github.io/public/imag/icon.jpg" />
+  <meta property="og:image" content="https://ryomak.github.io/public/img/icon/drawing_me.jpg" />
   <meta property="og:site_name" content="Ryoma Kurisu" />
   <meta property="og:locale" content="ja" />
 
@@ -18,15 +19,19 @@
   <meta name="twitter:description" content="ryomak's portfolio" />
   <meta name="twitter:image" content="https://ryomak.github.io/public/img/icon.jpg" />
 
-  <link rel="icon" type="image/ico" href="https://ryomak.github.io/public/img/favicon.ico">
+  <link rel="icon" type="image/ico" href="https://ryomak.github.io/public/img/favicon/favicon.ico">
   <link rel="stylesheet" href="public/css/style.css">
-  <link rel="stylesheet" href="public/css/mobile.css">
+  <link rel="stylesheet" href="public/css/pc.css">
+  <link rel="stylesheet" href="public/css/sp.css">
   <script
     src="https://code.jquery.com/jquery-3.4.1.min.js"
     integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
     crossorigin="anonymous">
   </script>
-  <script src="public/js/index.js"></script>
+  <script defer src="https://code.createjs.com/1.0.0/createjs.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/processing.js/1.6.6/processing.min.js"></script>
+  <script defer src="public/js/wave.js"></script>
+  <script defer src="public/js/index.js"></script>
 </head>
 <body>
   <div id="content">
@@ -34,7 +39,7 @@
     <section id="profile">
       <div>
         <div id="icon"></div>  
-        <div >
+        <div id="icon-name">
           <h1>Kurisu Ryoma</h1>
           <h2>Backend Engineer</h2>
         </div>     
@@ -43,56 +48,73 @@
           <h1 class="heading-title">Init</h1>
           <p>
            主にバックエンドエンジニアですがフロントも書きます<br>
-           最近はサービス運用について学んでます<br>
-           お仕事の依頼待ってます。
+           最近はインフラ運用について学んでます<br>
+           副業募集中です！！
          </p>
        </section>
        <!-- contact  -->
        <section>
         <h1 class="heading-title">Contact</h1>
-        <ul>
-          <li>Github:ryomak</li>
-          <li>Twitter:ryomak</li>
-          <li>instagram: kurisuuu</li>  
-          <li>Blog: H型プログラミング</li>
+        <ul class="no-list">
+          <li>Github:<a href="https://github.com/ryomak">ryomak</a></li>
+          <li>Twitter:<a href="https://twitter.com/kurisuuu3">ryomak</a></li>
+          <li>instagram: <a href="https://www.instagram.com/kuriiiii13/">kuriii13</a></li>  
+          <li>Blog: <a href="https://ryomak.info">H型プログラミング</a></li>
+          <li>Note: <a href="https://note.mu/ryomak13">ryomak</a></li>
         </ul>
       </section>
       </div>
     </section>
+
     <!-- introduce -->
     <section id="introduce">
       <!-- job -->
       <section class="pad-box">
         <h1 class="heading-title">Job</h1>
-        <ul>
-          <li>インターン: ワークスアプリケーション</li>
-          <li>インターン: VOYAGE GROUP</li>
-          <li>インターン: Eureka</li>
-          <li>エンジニア: クランテーブル:fullstack</li>
-          <li>エンジニア: Yahoo Japan</li>
+        <ul class="no-list">
+          <li>outsourcing: <a href="https://www.juksl.com/">Juksl</a><span class="time">[2018.4~2019.3]</span></li>
+          <li>Now : <a href="https://www.yahoo.co.jp/">Yahoo Japan</a><span class="time">[2019.4~now]</span></li>
         </ul>
       </section>
 
       <!-- skills -->
       <section class="pad-box">
         <h1 class="heading-title">Skills</h1>
+        <h2 class="heading-title">Commons</h2>
+        <ul class="slash-list">
+          <li>糸東流空手[初段]</li>
+          <li>基本情報技術者</li>
+          <li>バンジージャンプ</li>
+        </ul>        
         <h2 class="heading-title">FE</h2>
-        <ul>
+        <ul class="slash-list">
           <li>HTML</li>
           <li>CSS</li>
           <li>SCSS</li>
           <li>JavaScript</li>
           <li>TypeScript</li>
           <li>VueJS</li>
+          <li>NuxtJS</li>
         </ul>
         <h2 class="heading-title">BE</h2>
-        <ul>
+        <ul class="slash-list">
           <li>Go</li>
-          <li>echo,gin,gorrila,gorm</li>
+          <ul>
+            <li>echo,gin,gorrila,gorm</li>
+          </ul>
           <li>Java</li>
-          <li>spring</li>
-          <li>Node.js</li>
+          <ul>
+            <li>Spring</li>
+          </ul>
+          <li>CI/CD</li>
+          <ul>
+            <li>CircleCI,Screwdriver.cd</li>
+          </ul>
           <li>Linux</li>
+          <ul>
+            <li>CentOS,Ubuntu</li>
+          </ul>
+          <li>Node.js</li>
           <li>Docker</li>
           <li>Git</li>
           <li>MySQL</li>
@@ -110,7 +132,7 @@
       <!-- hobby  -->
       <section class="pad-box">
         <h1 class="heading-title">Hobby</h1>
-        <ul>
+        <ul class="no-list">
           <li>Procreate(絵)</li>
           <li>Game(FFX,FIFA...)</li>
           <li>読書</li>
@@ -118,15 +140,12 @@
           <li>Technology</li>
         </ul>
       </section>
-
-      
     </section>
 
     <!-- secret -->
     <section>
-      
+      <canvas id="canvas"></canvas>
     </section>
-
   </div>
 </body>
 </html>

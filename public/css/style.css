@@ -7,49 +7,82 @@ h3,
 h4,
 p,
 span,
-strong
-{
-    line-height: 1.5em;
+strong{
+    line-height: 1.3em;
 
     margin: 0;
 }
 
-a
-{
+a{
     font-weight: bold;
 
     text-decoration: none;
 
-    color: #008500;
+    color: #7e9b8b;
 }
 
-ul
-{
+ul{
     line-height: 1.5em;
 
     padding-left: 1em;
 }
 
-ul.slash-list
-{
+ul.slash-list{
     padding-left: 0;
 }
 
-ul.slash-list > li
-{
+ul.slash-list > li{
     display: inline-block;
 }
 
-ul.slash-list > li::after
-{
+ul.slash-list > li::after{
     margin: 0 .3em;
 
     content: '/';
 }
 
-ul.slash-list > li:last-child::after
-{
+ul.slash-list > li:last-child::after{
     display: none;
+}
+
+ul.no-list {
+    list-style: none;
+    padding-left: 0;
+}
+
+ul.no-list > li {
+    
+}
+
+ul.no-list > li:before {
+    content: '-';
+    margin-right: .3em;
+}
+
+
+h1.heading-title{
+    font-size: 1.3em;
+
+    margin: .5em 0;
+    margin-top: 0.5em;
+}
+
+h1.heading-title::before{
+    margin-right: .3em;
+
+    content: '#';
+}
+
+h2.heading-title{
+    font-size: 1.1em;
+
+    margin: .5em 0;
+}
+
+h2.heading-title::before{
+    margin-right: .3em;
+
+    content: '##';
 }
 
 body
@@ -59,141 +92,15 @@ body
     margin: 0;
 }
 
-/* ------------------ */
-
-section.content
-{
-    position: relative;
-
-    box-sizing: border-box;
-    width: 50%;
-    padding: 0 32px;
-}
-
-div#profile-wrapper
-{
-    position: relative;
-    top: 50%;
-
-    transform: translateY(-70%);
-}
-
-h1#name-card__name
-{
-    font-size: 3em;
-}
-span#name-card__description
-{
-    font-size: 1.5em;
-}
-
-section#content-left
-{
-    text-align: center;
-}
-
-img#profile-img
-{
-    max-width: 60%;
-
-    border: 4px solid black;
-    border-radius: 50%;
-}
-
-section#content-right
-{
-    overflow: scroll;
-
-    height: 100vh;
-    padding: 64px 0;
-
-    background-color: white;
-}
-
-
-
-
-span.employments__duration
-{
+span.time{
     margin-left: .5em;
 
     color: gray;
 }
 
-div#content
-{
-    display: flex;
-
-    max-width: 1024px;
-    margin: 0 auto;
-    padding: 1em;
-}
-
-
-
-h1.heding-title
-{
-    font-size: 2rem;
-
-    margin: .5em 0;
-    margin-top: 1em;
-}
-
-h1.heading-title::before
-{
-    margin-right: .3em;
-
-    content: '#';
-}
-
-h2.heading-title
-{
-    font-size: 1.3rem;
-
-    margin: .5em 0;
-}
-
-h2.heading-title::before
-{
-    margin-right: .3em;
-
-    content: '##';
-}
-
-
-
-section#introduce {
-    margin: 1em auto;
-    height: 90vh;
-    width: 50vw;
-    overflow: scroll;
-    border: medium solid #000;
-}
-
-section.pad-box {
-    padding: 1em;
-}
-
-section#profile {
-    margin: auto;
-    max-width: 50vw;
-    max-height: 90vh;
-    padding: 1em;
-}
-
-div#icon {
-    background-position: center center;
-    background-size:contain;
-    background-image: url('../img/icon/drawing_me.jpg');
-    
-    border-radius: 50%;
-    height: 30vh;
-    width: 30vh;
-
-    border: medium solid #000;
-
-}
-
-div#icon:hover {
-    background-image: url('../img/icon/me.jpg');
+canvas#canvas {
+	position: fixed;
+	margin: 0;
+	width: 100vw;
+	height: : 100vh;
 }

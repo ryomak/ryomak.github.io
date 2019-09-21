@@ -1,0 +1,61 @@
+
+@media screen and (max-width:600px){
+    
+    div#content{
+        width: 95%;
+        margin: 0;
+        display: block;
+    }
+
+
+    section#introduce {
+        width: 90%;
+        height: 100vh;
+        display: block;
+        margin: 0 auto;
+        overflow: scroll;
+        border: medium solid #000;
+    }
+
+    section.pad-box {
+        padding: .2em 1.3em;
+    }
+
+    section#profile {
+        margin: auto;
+        max-height: 80vh;
+        padding: 1em;
+        overflow: scroll;
+    }
+
+    div#icon {
+        background-position: center center;
+        background-size:contain;
+        background-image: url('../img/icon/drawing_me.jpg');
+        
+        border-radius: 50%;
+        height: 30vh;
+        width: 30vh;
+
+        border: medium solid #000;
+
+        margin: 0 auto;
+    }
+
+    div#icon:hover {
+        background-image: url('../img/icon/me.jpg');
+    }
+
+    div#icon-name {
+        text-align: center;
+    }
+
+    div#icon-name >h1 {
+        font-size: 2em;
+    }
+
+    div#icon-name >h2 {
+        color:#3a403a;
+        font-size: 1.3em;
+    }
+}
