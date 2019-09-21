@@ -1,1 +1,0 @@
-# ryomak.github.io
