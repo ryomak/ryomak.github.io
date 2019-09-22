@@ -10,6 +10,8 @@
 
     section#introduce {
         width: 90%;
+        height: 90vh;
+        overflow: scroll;
         display: block;
         margin: 0 auto;
         border: medium solid #000;
