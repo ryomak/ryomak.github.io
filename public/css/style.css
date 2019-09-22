@@ -107,6 +107,7 @@ div#paintings-list{
 img.paintings{
     display: block;
     width: 40%;
+    height: auto;
     margin: 2px;
     border-radius: 30%;
     border: medium solid #000;
