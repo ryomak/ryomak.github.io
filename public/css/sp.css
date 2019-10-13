@@ -1,6 +1,5 @@
 
 @media screen and (max-width:600px){
-    
     div#content{
         width: 95%;
         margin: 0;
@@ -14,7 +13,7 @@
         overflow: scroll;
         display: block;
         margin: 0 auto;
-        border: medium solid #000;
+        border: medium solid #555;
     }
 
     section.pad-box {
@@ -32,12 +31,11 @@
         background-position: center center;
         background-size:contain;
         background-image: url('../img/icon/drawing_me.jpg');
-        
         border-radius: 50%;
         height: 30vh;
         width: 30vh;
 
-        border: medium solid #000;
+        border: medium solid #555;
 
         margin: 0 auto;
     }

@@ -51,7 +51,6 @@ ul.no-list {
 }
 
 ul.no-list > li {
-    
 }
 
 ul.no-list > li:before {
@@ -88,7 +87,7 @@ h2.heading-title::before{
 body
 {
     font-family: 'Ropa Sans', sans-serif;
-
+    color:#555;
     margin: 0;
 }
 
@@ -110,7 +109,7 @@ img.paintings{
     height: auto;
     margin: 2px;
     border-radius: 30%;
-    border: medium solid #000;
+    border: medium solid #555;
 }
 
 #canvas {
