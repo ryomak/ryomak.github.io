@@ -1,8 +1,8 @@
 @media screen and (min-width:601px){
 
     div#content{
-        width: 100vw;
-        margin: 0 auto;
+        width: 90vw;
+        margin: auto;
         padding: 1em;
     }
 
@@ -48,13 +48,16 @@
     }
 
     .profile-top{
-      height: 80vw;
-      width: 50vw;
+      height: 80vh;
+      max-height: 90vh;
+      width: 40vw;
+      margin-top: 100px;
     }
 
     .profile-bottom{
-      width: 30vw;
+      width: 60vw;
       height: 80vh;
+      max-height: 90vh;
     }
 
 }
