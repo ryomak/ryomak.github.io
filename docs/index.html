@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136060317-3"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'UA-136060317-3');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1,user-scalable=no">
+  <title>ryomak</title>
+  
+  <meta property="og:url" content="https://ryomak.github.io/" />
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="ryomak">
+  <meta property="og:description" content="ryomak's portfolio" />
+  <meta property="og:image" content="https://ryomak.github.io/public/img/icon/drawing_me.jpg" />
+  <meta property="og:site_name" content="Ryoma Kurisu" />
+  <meta property="og:locale" content="ja" />
+
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:site" content="@kurisuuu3" />
+  <meta name="twitter:description" content="ryomak's portfolio" />
+  <meta name="twitter:image" content="https://ryomak.github.io/public/img/icon/drawing_me.jpg" />
+
+  <link rel="icon" type="image/ico" href="https://ryomak.github.io/public/img/favicon/favicon.ico">
+  <link rel="stylesheet" href="public/css/style.css">
+  <link rel="stylesheet" href="public/css/pc.css">
+  <link rel="stylesheet" href="public/css/sp.css">
+  <script src="https://kit.fontawesome.com/beac23b3ba.js" crossorigin="anonymous"></script>
+
+  <script
+    src="https://code.jquery.com/jquery-3.4.1.min.js"
+    integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+    crossorigin="anonymous">
+  </script>
+  <script defer src="https://code.createjs.com/1.0.0/createjs.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/processing.js/1.6.6/processing.min.js"></script>
+  
+  <script defer src="public/js/index.js"></script>
+</head>
+<body>
+  <div id="content">
+    <!-- icon logo -->
+    <section id="profile">
+      <section class="profile-top">
+        <div id="icon"></div>  
+        <div id="icon-name">
+          <h1>Kurisu Ryoma</h1>
+          <h2>Backend Engineer</h2>
+        </div>     
+      </section>
+      <section class="profile-bottom">
+        <input id="tab-profile" type="radio" name="profile-bottom-tab_item" checked>
+        <label class="profile-bottom-tab_item" for="tab-profile">profile</label>
+        <input id="tab-languages" type="radio" name="profile-bottom-tab_item">
+        <label class="profile-bottom-tab_item" for="tab-languages">languages</label>
+        <input id="tab-skills" type="radio" name="profile-bottom-tab_item">
+        <label class="profile-bottom-tab_item" for="tab-skills">skills</label>
+        <section id="profile-bottom-tab_content-profile" class="profile-bottom-tab_content">
+          <h1 class="heading-title">Me</h1>
+          <p>
+           主にバックエンドエンジニアですがフロントも書きます<br>
+           最近はインフラ運用について学んでます<br>
+          </p>
+          <h1 class="heading-title">Job</h1>
+          <ul class="no-list">
+            <li>outsourcing: <a href="https://www.juksl.com/">Juksl</a><span class="time">[2018.4~2019.3]</span></li>
+            <li>Now : <a href="https://www.yahoo.co.jp/">Yahoo Japan</a><span class="time">[2019.4~now]</span></li>
+          </ul>
+          <div class="profile-contact">
+            <h1 class="heading-title">Social</h1>
+            <a href="https://github.com/ryomak"><i class="fa fa-2x fa-instagram" aria-hidden="true"></i></a>
+            <a href="https://github.com/ryomak"><i class="fa fa-2x fa-github"></i></a>
+            <a href="https://twitter.com/kurisuuu3"><i class="fa fa-2x fa-twitter"></i></a>
+            <a href="https://ryomak.info"><i class="fa fa-2x fa-blog"></i></a>
+          </div>
+        </section>
+        <section id="profile-bottom-tab_content-languages" class="profile-bottom-tab_content">
+          <h1 class="heading-title">Languages</h1>
+          <p> Go </p>
+          <div class="skill-bar">
+            <div class="skill-bar-gage">
+              <div class="skills">20%</div>
+            </div>
+          </div>
+          <p> html </p>
+          <div class="skill-bar">
+            <div class="skill-bar-gage">
+              <div class="skills">20%</div>
+            </div>
+          </div>
+        </section>
+        <section id="profile-bottom-tab_content-skills" class="profile-bottom-tab_content">
+          <div class="scroller">
+            <h1 class="heading-title">Skills</h1>
+            <h2 class="heading-title">Commons</h2>
+            <ul class="slash-list">
+              <li>糸東流空手[初段]</li>
+              <li>基本情報技術者</li>
+              <li>バンジージャンプ</li>
+            </ul>        
+            <h2 class="heading-title">FE</h2>
+            <ul class="slash-list">
+              <li>HTML</li>
+              <li>CSS</li>
+              <li>SCSS</li>
+              <li>JavaScript</li>
+              <li>TypeScript</li>
+              <li>VueJS</li>
+              <li>NuxtJS</li>
+            </ul>
+            <h2 class="heading-title">BE</h2>
+            <ul class="slash-list">
+              <li>Go</li>
+              <ul>
+                <li>echo,gin,gorrila,gorm</li>
+              </ul>
+              <li>Java</li>
+              <ul>
+                <li>Spring</li>
+              </ul>
+              <li>CI/CD</li>
+              <ul>
+                <li>CircleCI,Screwdriver.cd</li>
+              </ul>
+              <li>Linux</li>
+              <ul>
+                <li>CentOS,Ubuntu</li>
+              </ul>
+              <li>Node.js</li>
+              <li>Docker</li>
+              <li>Git</li>
+              <li>MySQL</li>
+              <li>XaaS</li>
+              <li>etc...</li>
+            </ul>
+          </div>
+        </section>
+      </section>
+    </section>
+
+    <!-- introduce -->
+    <section id="grafana">
+
+
+    </section>
+
+  </div>
+</body>
+</html>
+
