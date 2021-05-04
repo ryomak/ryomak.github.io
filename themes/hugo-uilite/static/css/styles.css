@@ -1,7 +1,8 @@
 @import url("https://fonts.googleapis.com/css?family=Ropa+Sans&display=swap");
 html {
   overflow-x: hidden;
-  overflow-y: scroll; }
+  overflow-y: scroll;
+  max-width: 100vw; }
 
 body {
   font-family: 'Ropa Sans', sans-serif !important; }
