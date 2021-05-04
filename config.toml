@@ -1,4 +1,4 @@
-baseURL = "https://ryomak.github.io"
+baseURL = "https://ryomak.github.io/"
 languageCode = "ja"
 title = "ryomak"
 theme = "hugo-uilite"
