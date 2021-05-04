@@ -1,9 +1,7 @@
 @import url("https://fonts.googleapis.com/css?family=Ropa+Sans&display=swap");
 html {
   overflow-x: hidden;
-  overflow-y: scroll;
-  max-width: 100vw;
-  position: relative; }
+  overflow-y: scroll; }
 
 body {
   font-family: 'Ropa Sans', sans-serif !important; }
@@ -48,7 +46,7 @@ a {
     transition: all 0.8s cubic-bezier(0.79, 0, 0.05, 0.83);
     background-color: #fff; }
   .main-content.active:after {
-    position: absolute;
+    position: initial;
     content: '';
     top: 0;
     bottom: 0;
@@ -258,7 +256,8 @@ section {
 @media (max-width: 767px) {
   html {
     max-width: 100vw;
-    width: 100vw; }
+    width: 100vw;
+    position: relative; }
 
   .sidebar {
     position: static;

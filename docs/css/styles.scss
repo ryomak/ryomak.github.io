@@ -8,9 +8,6 @@
 html{
   overflow-x: hidden;
   overflow-y: scroll; 
-  max-width: 100vw;
-  position:relative;
-
 }
 
 body {
@@ -68,7 +65,7 @@ a{
 
   &.active{
     &:after{
-      position: absolute;
+      position:initial;
       content: '';
       top: 0; bottom: 0;
       left: 0; right: 0;
@@ -389,6 +386,7 @@ section{
   html{
     max-width: 100vw;
     width: 100vw;
+    position: relative;
   }
 	.sidebar {
     position: static;
