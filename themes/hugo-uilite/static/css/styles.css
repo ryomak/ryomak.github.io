@@ -38,7 +38,6 @@ a {
   float: none;
   clear: none; }
   .main-content:after {
-    position: absolute;
     content: '';
     top: 0;
     bottom: 0;
@@ -47,7 +46,6 @@ a {
     transition: all 0.8s cubic-bezier(0.79, 0, 0.05, 0.83);
     background-color: #fff; }
   .main-content.active:after {
-    position: absolute;
     content: '';
     top: 0;
     bottom: 0;
@@ -255,6 +253,9 @@ section {
   margin-bottom: 20px; }
 
 @media (max-width: 767px) {
+  html {
+    max-width: 100vw; }
+
   .sidebar {
     position: static;
     width: 100%;
