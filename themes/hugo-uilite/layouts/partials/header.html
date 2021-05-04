@@ -25,7 +25,18 @@
 	<link rel="stylesheet" href="{{ .Site.BaseURL }}css/highlight.css">
 	<!-- Font awesome -->
 	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css" integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous">
+	<meta property="og:title" content="{{.Site.Title}}">
+	<meta property="og:image" content="{{.Site.BaseURL}}images/me.png">
 
+	<!-- Global site tag (gtag.js) - Google Analytics -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=UA-136060317-3"></script>
+	<script>
+	window.dataLayer = window.dataLayer || [];
+	function gtag(){dataLayer.push(arguments);}
+	gtag('js', new Date());
+
+	gtag('config', 'UA-136060317-3');
+	</script>
 
 	<!-- Meta tags -->
 	<meta name="author" content="{{ $config.author }}">
