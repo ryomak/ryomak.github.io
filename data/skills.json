@@ -1,0 +1,12 @@
+{
+	"title" : "Skills",
+	"skills" : {
+		"Go" : "95",
+		"Java" : "70",
+		"GCP" : "85",
+		"Linux" : "75",
+		"React" : "60",
+		"Frontend" : "60",
+		"Backend" : "90"
+	}
+}

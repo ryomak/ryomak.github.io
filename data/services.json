@@ -1,0 +1,10 @@
+{
+	"title" : "Services",
+	"services" : [
+		{
+			"icon" : "code",
+			"title" : "バックエンド開発業務",
+			"description" : "0-1の開発経験あり。Goを主に仕事にしていますが、他の言語でも対応します"
+		}
+	]
+}
