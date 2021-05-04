@@ -46,7 +46,7 @@ a {
     transition: all 0.8s cubic-bezier(0.79, 0, 0.05, 0.83);
     background-color: #fff; }
   .main-content.active:after {
-    position: initial;
+    position: absolute;
     content: '';
     top: 0;
     bottom: 0;
@@ -267,6 +267,18 @@ section {
   .main-content {
     width: 100%;
     margin-left: 0%; }
+    .main-content.after {
+      overflow-x: hidden; }
+    .main-content.active:after {
+      overflow-x: hidden;
+      position: initial;
+      content: '';
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      transform: translateX(100vw);
+      background-color: #fff; }
 
   #timeline {
     margin: 30px;
