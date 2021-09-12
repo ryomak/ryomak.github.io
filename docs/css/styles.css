@@ -141,8 +141,7 @@ h1, h2, h3, h4, h5, h6 {
 
 section {
   padding: 10%; }
-  section .heading {
-    margin-bottom: 30px; }
+  section .heading { }
   section.yellow {
     background-color: #ffd061;
     color: #000 !important; }
