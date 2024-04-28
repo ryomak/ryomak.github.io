@@ -16,11 +16,9 @@ export const siteConfig: SiteConfig = {
     src: 'assets/images/demo-banner.png',
   },
   favicon: [    // Leave this array empty to use the default favicon
-    // {
-    //   src: '/favicon/icon.png',    // Path of the favicon, relative to the /public directory
-    //   theme: 'light',              // (Optional) Either 'light' or 'dark', set only if you have different favicons for light and dark mode
-    //   sizes: '32x32',              // (Optional) Size of the favicon, set only if you have favicons of different sizes
-    // }
+    {
+      src: '/favicon/favicon.png',    // Path of the favicon, relative to the /public directory
+    }
   ],
   xmlFeeds: ['https://zenn.dev/ryomak/feed','https://note.com/ryomak13/rss'],
 }
