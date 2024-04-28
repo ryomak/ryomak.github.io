@@ -11,8 +11,6 @@ import { remarkReadingTime } from "./src/plugins/remark-reading-time.mjs"
 import svelte from "@astrojs/svelte"
 import swup from '@swup/astro';
 import sitemap from '@astrojs/sitemap';
-import vercel from '@astrojs/vercel/serverless';
-
 
 const oklchToHex = (str) => {
   const DEFAULT_HUE = 250
@@ -28,8 +26,6 @@ const oklchToHex = (str) => {
 export default defineConfig({
   site: "https://www.ryomak.jp",
   base: "/",
-  output: 'server',
-  adapter: vercel(),
   integrations: [
     tailwind(),
     swup({
