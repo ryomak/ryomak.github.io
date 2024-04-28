@@ -47,7 +47,7 @@ async function fetchFeedItems(url: string) {
 				description: description,
 				image: '',
 				tags: tags,
-				category: 'blog',
+				category: 'Blog',
 				external: true,
 				link,
 			};

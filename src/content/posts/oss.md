@@ -1,6 +1,6 @@
 ---
 title: OSSコントリビュート
-published: "2023-12-29"
+published: 2023-12-29
 description: "コントリビュートしたOSSを記録していく"
 tags: [tech]
 category: Works

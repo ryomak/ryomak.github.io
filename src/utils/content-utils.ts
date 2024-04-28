@@ -72,9 +72,15 @@ export type Category = {
 }
 
 export async function getCategoryList(): Promise<Category[]> {
-  const allBlogPosts = await getCollection('posts', ({ data }) => {
+  let allBlogPosts = await getCollection('posts', ({ data }) => {
     return import.meta.env.PROD ? data.draft !== true : true
   })
+
+  const feedItems = await getCollection('feed', ({ data }) => {return true})
+
+  allBlogPosts = [...allBlogPosts, ...feedItems]
+
+
   const count: { [key: string]: number } = {}
   allBlogPosts.map(post => {
     if (!post.data.category) {

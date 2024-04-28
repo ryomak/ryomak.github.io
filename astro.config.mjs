@@ -11,6 +11,9 @@ import { remarkReadingTime } from "./src/plugins/remark-reading-time.mjs"
 import svelte from "@astrojs/svelte"
 import swup from '@swup/astro';
 import sitemap from '@astrojs/sitemap';
+import customToc from "astro-custom-toc";
+import remarkLinkCard from 'remark-link-card';
+
 
 const oklchToHex = (str) => {
   const DEFAULT_HUE = 250
@@ -51,9 +54,10 @@ export default defineConfig({
     }),
     svelte(),
     sitemap(),
+    customToc(),
   ],
   markdown: {
-    remarkPlugins: [remarkMath, remarkReadingTime],
+    remarkPlugins: [remarkMath, remarkReadingTime, remarkLinkCard],
     rehypePlugins: [
       rehypeKatex,
       rehypeSlug,

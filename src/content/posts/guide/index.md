@@ -1,7 +1,7 @@
 ---
 title: プロンプトエンジニアリング： CodePrompt
-published: "2023-04-08"
-description: " 擬似プログラムで目標達成のコンサルティングを試す"
+published: 2023-04-08
+description: "擬似プログラムで目標達成のコンサルティングを試す"
 #image: "./cover.jpeg"
 tags: ["tech"]
 category: Blog
