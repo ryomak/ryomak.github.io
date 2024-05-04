@@ -5,19 +5,24 @@ import { getOgImage } from '@components/OgImage.tsx';
 export async function getStaticPaths() {
     const posts = await getCollection('posts');
 
-    return posts.map((post) => ({
+    let pp = posts.map((post) => ({
         params: {
             slug: post.slug,
         },
     }));
+
+    pp.push({
+        params: {
+            slug: 'none',
+        },
+    });
+
+    return pp;
 }
 
 export async function GET({ params }: APIContext) {
-    const { slug,type } = params;
+    const { slug } = params;
 
-    if (!slug) return { status: 404 };
-
-    // @ts-ignore
     const post = (await getCollection('posts')).find((post) => post.slug === slug);
     const title = post?.data.title ?? 'I am ryomak(kurisu).';
 
