@@ -2,7 +2,7 @@
 title: OSSコントリビュート
 published: 2023-12-29
 description: "コントリビュートしたOSSを記録していく"
-tags: [tech]
+tags: [tech,oss]
 category: Works
 draft: false
 ---
@@ -11,28 +11,17 @@ draft: false
 コントリビュートしたOSS一覧を記録していく
 
 ## Langchaingo
+- Weaviateプラグインの実装
 https://github.com/tmc/langchaingo/commits?author=RyomaK
 
 ## go-swagger
+- タイポ修正
 https://github.com/go-swagger/go-swagger/commits?author=RyomaK
 
 ## go-openai
+- テスト修正
 https://github.com/sashabaranov/go-openai/commits?author=RyomaK
 
 ## go
+- depricatedな関数を利用しないようにした
 https://github.com/golang/go/commits?author=RyomaK
-
-
-# 個人的なOSSプロジェクト
-## go-deep-util
-pure-goでのdeep learningの実装をサポートするユーティリティ  
-https://github.com/ryomak/go-deep-util  
-
-
-## gogener
-テンプレートからコードを生成するツール  
-https://github.com/ryomak/gogener  
-
-## serrs
-Sentryへのエラーを簡単に送信できる、シンプルなエラーハンドリングライブラリ  
-https://github.com/ryomak/serrs
