@@ -9,5 +9,5 @@
 
 
 ## Skills
-![My Skills](https://skillicons.dev/icons?i=html,css,js,ts,react,vite,astro,docker,go,java,firebase,gcp,wordpress,ruby,rails)
+![My Skills](https://skillicons.dev/icons?i=html,css,js,ts,react,vite,astro,docker,go,java,firebase,gcp,wordpress,ruby,rails&perline=5)
 ![](https://raw.githubusercontent.com/ryomak/ryomak/master/profile-summary-card-output/gotham/0-profile-details.svg)
