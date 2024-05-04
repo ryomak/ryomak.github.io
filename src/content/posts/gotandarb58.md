@@ -1,5 +1,5 @@
 ---
-title: Gotanda.rb#58で登壇しました
+title: Gotanda.rb#58に登壇しました
 published: 2024-04-24
 description: '登壇駆動で、人生初登壇してきました'
 image: 'https://files.speakerdeck.com/presentations/cdf23c3d74b6477a88e46d6ecf7f26fc/slide_0.jpg?29869168'

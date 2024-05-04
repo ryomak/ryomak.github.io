@@ -12,7 +12,7 @@ const mePost = await getEntry('spec', 'me')
 const { Content } = await mePost.render()
 
 ---
-<MainGridLayout title={i18n(I18nKey.home)} description={i18n(I18nKey.home)}>
+<MainGridLayout title={i18n(I18nKey.home)} description={i18n(I18nKey.home)} slug="none">
     <div class="flex w-full rounded-[var(--radius-large)] overflow-hidden relative min-h-32">
         <div class="card-base z-10 px-9 py-6 relative w-full ">
             <Markdown class="mt-2">

@@ -11,13 +11,15 @@ import {profileConfig, siteConfig} from "@/config";
 import {Favicon} from "../types/config";
 import {defaultFavicons} from "../constants/icon";
 
+import { SEO } from "astro-seo";
+
 interface Props {
 	title: string;
 	banner: string;
 	description?: string;
 }
 
-let { title, banner, description } = Astro.props;
+let { title, banner, description , slug} = Astro.props;
 
 const isHomePage = pathsEqual(Astro.url.pathname, '/');
 
@@ -99,6 +101,27 @@ const favicons: Favicon[] = siteConfig.favicon.length > 0 ? siteConfig.favicon :
 
 		<style define:vars={{ configHue }}></style>  <!-- defines global css variables. This will be applied to <html> <body> and some other elements idk why -->
 
+		<SEO
+			openGraph={{
+				basic: {
+					title: pageTitle,
+					type: description || pageTitle,
+					image: `/og/${slug}.png`,
+				}
+			}}
+			extend={{
+
+				// extending the default meta tags
+    			meta: [
+					{
+						name: "twitter:image",
+						content: `/og/${slug}.png`,
+					},
+					{ name: "twitter:title", content: pageTitle },
+					{ name: "twitter:description", content: description||pageTitle },
+				],
+			}}
+		/>
 	</head>
 	<body class=" min-h-screen transition " class:list={[{"is-home": isHomePage, "enable-banner": enableBanner}]}>
     <!-- Google Tag Manager (noscript) -->
