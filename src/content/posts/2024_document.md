@@ -1,7 +1,7 @@
 ---
-title: 2024_個人的に刺さった資料集
-published: 2024-04-28
-description: "個人的に刺さった資料をまとめていく"
+title: 2024_個人的に見返したい資料集
+published: 2024-04-26
+description: "個人的に見返したい資料をまとめていく"
 tags: [Learning]
 category: Blog
 draft: false
