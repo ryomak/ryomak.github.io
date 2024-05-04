@@ -13,5 +13,5 @@
 | 2024/04/24 | [サクッと自分専用の サポートAIをつくって チューニングする](https://speakerdeck.com/ryomak/sakututozi-fen-zhuan-yong-no-sapotoaiwotukutute-tiyuningusuru) | Gotanda.rb #58 |
 
 ## Skills
-![My Skills](https://skillicons.dev/icons?i=html,css,js,react,astro,docker,go,java,firebase,gcp,ruby,rails)
+![My Skills](https://skillicons.dev/icons?i=html,css,js,ts,react,vite,astro,docker,go,java,firebase,gcp,wordpress,ruby,rails)
 ![](https://raw.githubusercontent.com/ryomak/ryomak/master/profile-summary-card-output/gotham/0-profile-details.svg)
