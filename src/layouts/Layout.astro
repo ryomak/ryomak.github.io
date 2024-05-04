@@ -106,16 +106,15 @@ const favicons: Favicon[] = siteConfig.favicon.length > 0 ? siteConfig.favicon :
 				basic: {
 					title: pageTitle,
 					type: description || pageTitle,
-					image: `/og/${slug}.png`,
+					image: `https://www.ryomak.jp/og/${slug}.png`,
 				}
 			}}
 			extend={{
-
 				// extending the default meta tags
     			meta: [
 					{
 						name: "twitter:image",
-						content: `/og/${slug}.png`,
+						content: `https://www.ryomak.jp/og/${slug}.png`,
 					},
 					{ name: "twitter:title", content: pageTitle },
 					{ name: "twitter:description", content: description||pageTitle },
