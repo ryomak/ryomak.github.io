@@ -20,11 +20,11 @@ https://github.com/tmc/langchaingo/commits?author=RyomaK
 https://github.com/go-swagger/go-swagger/commits?author=RyomaK
 
 ## go-openai
-- テスト修正  
+- テストケース修正  
 
 https://github.com/sashabaranov/go-openai/commits?author=RyomaK
 
 ## go
-- depricatedな関数を利用しないようにした  
+- deprecatedな関数をreplace  
 
 https://github.com/golang/go/commits?author=RyomaK
