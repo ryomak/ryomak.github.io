@@ -4,6 +4,8 @@ import Pagination from "@components/control/Pagination.astro";
 import {getSortedPosts} from "@utils/content-utils";
 import {PAGE_SIZE} from "@constants/constants";
 import PostPage from "@components/PostPage.astro";
+import {i18n} from "../../i18n/translation";
+import I18nKey from "../../i18n/i18nKey";
 
 export async function getStaticPaths({ paginate }) {
     const allBlogPosts = await getSortedPosts('Blog');
@@ -16,7 +18,7 @@ const len = page.data.length;
 
 ---
 
-<MainGridLayout>
+<MainGridLayout title={i18n(I18nKey.blog)} description={i18n(I18nKey.blog)}>
     <PostPage page={page}></PostPage>
     <Pagination class="mx-auto onload-animation" page={page} kind={'blog'} style=`animation-delay: calc(var(--content-delay) + ${(len)*50}ms)`></Pagination>
 </MainGridLayout>

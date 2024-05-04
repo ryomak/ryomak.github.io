@@ -5,6 +5,7 @@ description: "ゴールデンウィークで、自動でスクショを撮って
 tags: [tech,oss]
 category: Works
 draft: false
+image: "./cover.webp"
 ---
 
 # 自動でスクショを撮ってPDFを作成するツールを作成
@@ -87,12 +88,15 @@ macだと権限が必要だと思うので、適宜必要になったものは�
 PDFが生成されると、自動で開きます。
 
 
-## 具体例
+## 実行例
 <video src="https://github.com/ryomak/auto-pdf-generator/assets/21288308/f6316c14-067a-45ea-9247-4f681938d2c2" controls></video>
 
 ## 最後に
 Kindle以外にも色々なシーンでスクショをとって、PDFにすることができます。
 
-利用される方は、レポジトリにスターをつけていただけると嬉しいです。  
+`よければレポジトリにスターをつけていただけると嬉しいです。`  
 
 また、バグや改善点などありましたら、IssueやPRをお待ちしております。
+
+
+::github{repo="ryomak/auto-pdf-generator"}

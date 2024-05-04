@@ -5,6 +5,7 @@ description: "Goのアプリケーション用エラーハンドリングライ�
 tags: [tech,oss]
 category: Works
 draft: false
+image: "./cover.webp"
 ---
 
 

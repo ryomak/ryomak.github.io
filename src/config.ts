@@ -7,8 +7,8 @@ import type {
 import { LinkPreset } from './types/config'
 
 export const siteConfig: SiteConfig = {
-  title: 'me',
-  subtitle: '個人ブログ',
+  title: 'ryomak | kurisu',
+  subtitle: 'profile',
   lang: 'ja',
   themeHue: 160,
   banner: {
@@ -56,6 +56,11 @@ export const profileConfig: ProfileConfig = {
       name: 'GitHub',
       icon: 'fa6-brands:github',
       url: 'https://github.com/ryomak',
+    },
+    {
+      name: 'Zenn',
+      icon: 'zenn',
+      url: 'https://zenn.dev/ryomak',
     },
   ],
 }

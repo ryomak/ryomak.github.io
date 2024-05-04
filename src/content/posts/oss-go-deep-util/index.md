@@ -5,6 +5,7 @@ description: "GoでDeepLearningを実行するためのユーティリティ"
 tags: [tech,oss]
 category: Works
 draft: false
+image: "./cover.webp"
 ---
 
 # GoでDeepLearningを実行するためのユーティリティ

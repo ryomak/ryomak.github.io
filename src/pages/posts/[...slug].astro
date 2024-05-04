@@ -74,7 +74,7 @@ const { Content , remarkPluginFrontmatter} = await entry.render();
 
             <!-- always show cover as long as it has one -->
 
-            {entry.data.image &&
+            {entry.data.image && entry.data.category !== 'Works' &&
                 <ImageWrapper src={entry.data.image} basePath={path.join("content/posts/", getDir(entry.id))} class="mb-8 rounded-xl banner-container onload-animation"/>
             }
 

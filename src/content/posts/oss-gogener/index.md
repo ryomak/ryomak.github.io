@@ -5,6 +5,7 @@ description: "Goでテンプレートからコードを生成するツールを�
 tags: [tech,oss]
 category: Works
 draft: false
+image: "./cover.webp"
 ---
 
 # GoでDeepLearningを実行するためのユーティリティ
