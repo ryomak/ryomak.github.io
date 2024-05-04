@@ -1,17 +1,16 @@
 ---
-title: "OSS: Goのアプリケーション用エラーハンドリングライブラリを作成した"
+title: "OSS: Goのアプリケーション用エラーハンドリングライブラリ"
 published: 2024-04-25
-description: "Goのアプリケーション用エラーハンドリングライブラリを作成した"
+description: "Goのアプリケーション用エラーハンドリングライブラリを作成"
 tags: [tech,oss]
 category: Works
 draft: false
 ---
 
 
-# Goのアプリケーション用エラーハンドリングライブラリを作成した
+# Goのアプリケーション用エラーハンドリングライブラリを作成
 
-https://github.com/ryomak/serrs
-
+::github{repo="ryomak/serrs"}
 
 ## 背景
 Goのアプリケーションを作る時のエラーハンドリングにいつも迷います。
@@ -19,7 +18,8 @@ Goのアプリケーションを作る時のエラーハンドリングにいつ
 
 
 ## 使い方
-具体的な方法は、以下を参照してください。
+具体的な方法は、以下を参照してください。  
+
 https://zenn.dev/ryomak/articles/go-error-sentry
 
 

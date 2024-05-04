@@ -1,13 +1,13 @@
 ---
-title: "OSS: GoでDeepLearningを実行するためのユーティリティを作った"
+title: "OSS: GoでDeepLearningを実行するためのユーティリティ"
 published: 2019-12-15
-description: "GoでDeepLearningを実行するためのユーティリティを作った"
+description: "GoでDeepLearningを実行するためのユーティリティ"
 tags: [tech,oss]
 category: Works
 draft: false
 ---
 
-# GoでDeepLearningを実行するためのユーティリティを作った
+# GoでDeepLearningを実行するためのユーティリティ
 
 https://github.com/ryomak/go-deep-util
 

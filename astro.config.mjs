@@ -7,7 +7,12 @@ import rehypeAutolinkHeadings from "rehype-autolink-headings"
 import rehypeKatex from "rehype-katex"
 import rehypeSlug from "rehype-slug"
 import remarkMath from "remark-math"
+import remarkDirective from "remark-directive" /* Handle directives */
+import rehypeComponents from "rehype-components"; /* Render the custom directive content */
 import { remarkReadingTime } from "./src/plugins/remark-reading-time.mjs"
+import { parseDirectiveNode } from "./src/plugins/remark-directive-rehype.js"
+import { AdmonitionComponent } from "./src/plugins/rehype-component-admonition.mjs"
+import { GithubCardComponent } from "./src/plugins/rehype-component-github-card.mjs"
 import svelte from "@astrojs/svelte"
 import swup from '@swup/astro';
 import sitemap from '@astrojs/sitemap';
@@ -57,10 +62,20 @@ export default defineConfig({
     customToc(),
   ],
   markdown: {
-    remarkPlugins: [remarkMath, remarkReadingTime, remarkLinkCard],
+    remarkPlugins: [remarkMath, remarkReadingTime, remarkDirective, parseDirectiveNode,remarkLinkCard],
     rehypePlugins: [
       rehypeKatex,
       rehypeSlug,
+      [rehypeComponents, {
+        components: {
+          github: GithubCardComponent,
+          note: (x, y) => AdmonitionComponent(x, y, "note"),
+          tip: (x, y) => AdmonitionComponent(x, y, "tip"),
+          important: (x, y) => AdmonitionComponent(x, y, "important"),
+          caution: (x, y) => AdmonitionComponent(x, y, "caution"),
+          warning: (x, y) => AdmonitionComponent(x, y, "warning"),
+        },
+      }],
       [
         rehypeAutolinkHeadings,
         {
