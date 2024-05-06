@@ -1,6 +1,6 @@
 ---
 title: 2024年アウトプットしたいこと一覧
-published: 2024-05-05
+published: 2024-03-01
 description: 'アウトプットしたいこと一覧'
 tags: ['diary']
 category: 'Blog'
