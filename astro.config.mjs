@@ -34,6 +34,7 @@ const oklchToHex = str => {
 export default defineConfig({
   site: "https://www.ryomak.jp",
   base: "/",
+  trailingSlash: 'always',
   integrations: [tailwind(), swup({
     theme: false,
     animationClass: 'transition-',

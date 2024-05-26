@@ -14,14 +14,14 @@ function joinUrl(...parts: string[]): string {
 
 export function getPostUrlBySlug(slug: string): string | null {
   if (!slug) return null
-  return `/posts/${slug}`
+  return `/posts/${slug}/`
 }
 
 export function getCategoryUrl(category: string): string | null {
   if (!category) return null
   if (category === i18n(i18nKey.uncategorized))
-    return '/archive/category/uncategorized'
-  return `/archive/category/${category}`
+    return '/archive/category/uncategorized/'
+  return `/archive/category/${category}/`
 }
 
 export function getDir(path: string): string {

@@ -9,14 +9,14 @@ export const LinkPresets: { [key in LinkPreset]: NavBarLink } = {
   },
   [LinkPreset.Blog]: {
     name: i18n(I18nKey.blog),
-    url: '/blog',
+    url: '/blog/',
   },
   [LinkPreset.Archive]: {
     name: i18n(I18nKey.archive),
-    url: '/archive',
+    url: '/archive/',
   },
   [LinkPreset.Works]: {
     name: i18n(I18nKey.works),
-    url: '/works',
+    url: '/works/',
   }
 }
