@@ -1,0 +1,36 @@
+---
+import {Icon} from "astro-icon/components";
+const { platform, url, title } = Astro.props;
+
+const shareUrl = () => {
+	switch (platform) {
+		case 'x':
+            const tt = title?.replaceAll('#','')
+			return `https://twitter.com/intent/tweet?url=${url}&text=${tt}`;
+		case 'facebook':
+			return `https://www.facebook.com/sharer.php?u=${url}`;
+		case 'bukuma':
+			return `http://b.hatena.ne.jp/add?mode=confirm&url=${url}`;
+		default:
+			return '#';
+	}
+};
+
+const shareIcon = () => {
+    switch (platform) {
+        case 'x':
+            return 'fa6-brands:square-x-twitter';
+        case 'facebook':
+            return 'fa6-brands:facebook';
+        case 'bukuma':
+            return 'bukuma';
+        default:
+            return 'fa6-brands:square-x-twitter';
+    }
+};
+
+---
+
+<a href={shareUrl()} target="_blank" rel="noopener noreferrer" class="w-fit">
+    <Icon name=`${shareIcon()}` size="2rem"></Icon>
+</a>

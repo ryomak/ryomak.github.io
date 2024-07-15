@@ -8,6 +8,7 @@ import I18nKey from "@i18n/i18nKey";
 import {getDir, getPostUrlBySlug} from "@utils/url-utils";
 import Markdown from "@components/misc/Markdown.astro";
 import path from "path";
+import ShareButton from "../../components/widget/ShareButton.astro"
 import {Icon} from "astro-icon/components";
 
 export async function getStaticPaths() {
@@ -19,9 +20,11 @@ export async function getStaticPaths() {
     }));
 }
 
-const { entry } = Astro.props;
+const { entry  } = Astro.props;
+
 const { Content , remarkPluginFrontmatter} = await entry.render();
 
+const currentUrl = `${import.meta.env.SITE}/${entry.collection}/${entry.slug}/`
 ---
 <MainGridLayout banner={entry.data.image} title={entry.data.title} description={entry.data.description} slug={entry.slug}>
 
@@ -86,6 +89,15 @@ const { Content , remarkPluginFrontmatter} = await entry.render();
 
         </div>
     </div>
+
+    <div class="w-full flex flex-row justify-center">
+        <div class="flex flex-row justify-between mb-4 gap-4 overflow-hidden max-w-48 bg-white p-4 rounded-md">
+            <ShareButton platform='x' url={currentUrl} title={entry.data.title}/>
+            <ShareButton platform='bukuma' url={currentUrl} />
+            <ShareButton platform='facebook' url={currentUrl} />
+        </div>
+    </div>
+
 
     <div class="flex flex-col md:flex-row justify-between mb-4 gap-4 overflow-hidden w-full">
         <a href={getPostUrlBySlug(entry.data.nextSlug)} class="w-full font-bold overflow-hidden active:scale-95">
