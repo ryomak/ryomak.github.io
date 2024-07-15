@@ -50,13 +50,9 @@ if (r == page.lastPage - 2)
 if (r < page.lastPage)
     pages.push(page.lastPage);
 
-const parts: string[] = page.url.current.split('/');
-const commonUrl: string = parts.slice(0, -1).join('/') + '/';
-
 const getPageUrl = (p: number) => {
-    if (p == 1) return commonUrl;
-    if (commonUrl.includes(kind)) return commonUrl + p;
-    return commonUrl +kind+"/" +p;
+    if (p == 1) return `/${kind}/`;
+    return `/${kind}/${p}/`;
 }
 
 ---
