@@ -20,6 +20,9 @@ import customToc from "astro-custom-toc";
 import remarkLinkCard from 'remark-link-card';
 import react from "@astrojs/react";
 import wasm from 'vite-plugin-wasm';
+import {dataToEsm} from '@rollup/pluginutils'
+import { readFileSync } from 'fs';
+
 
 
 const oklchToHex = str => {
@@ -56,7 +59,7 @@ export default defineConfig({
     }
   }), Compress({
     Image: false
-  }), svelte(), sitemap(), customToc(), react(), wasm()],
+  }), svelte(), sitemap(), customToc(), react()],
   markdown: {
     remarkPlugins: [remarkMath, remarkReadingTime, remarkDirective, parseDirectiveNode, remarkLinkCard],
     rehypePlugins: [rehypeKatex, rehypeSlug, [rehypeComponents, {
@@ -88,6 +91,19 @@ export default defineConfig({
     }]]
   },
   vite: {
+    plugins: [
+      {
+        name: 'vite-plugin-base64',
+        async transform(source, id) {
+          if (!id.endsWith('.wasm')) return
+          const file = readFileSync(id);
+          const base64 = file.toString('base64');
+          const code = `data:application/wasm;base64,${base64}";`;
+          return dataToEsm(code)
+        },
+      },
+      wasm()
+    ],
     css: {
       preprocessorOptions: {
         stylus: {
