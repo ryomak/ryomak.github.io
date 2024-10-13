@@ -13,7 +13,7 @@ if (!art) {
 }
 
 const rawCode = await readFile(art.language, art.name);
-const wasmFilePath = `/wasm/${art.language}_${art.name}.wasm`
+const wasmFilePath = `/wasm/${art.language}_${art.name}.wasm?url`
 
 ---
 
@@ -40,7 +40,9 @@ const wasmFilePath = `/wasm/${art.language}_${art.name}.wasm`
 	async function initWasm() {
 		if (typeof Go !== 'undefined') {
 			const go = new Go();
-			const result = await WebAssembly.instantiateStreaming(fetch(wasmFilePath), go.importObject);
+			const response = await fetch(wasmFilePath);
+			const buffer = await response.arrayBuffer();
+			const result = await WebAssembly.instantiateStreaming(buffer, go.importObject);
 			await go.run(result.instance);
 		} else {
 			console.error('Go is not defined. Make sure wasm_exec.js is loaded correctly.');

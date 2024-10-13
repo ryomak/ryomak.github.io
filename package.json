@@ -61,7 +61,8 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.7.3",
     "typescript": "^5.4.2",
-    "unist-util-visit": "^5.0.0"
+    "unist-util-visit": "^5.0.0",
+    "vite-plugin-wasm": "^3.3.0"
   },
   "devDependencies": {
     "@astrojs/ts-plugin": "^1.6.0",

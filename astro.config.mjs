@@ -19,6 +19,9 @@ import sitemap from '@astrojs/sitemap';
 import customToc from "astro-custom-toc";
 import remarkLinkCard from 'remark-link-card';
 import react from "@astrojs/react";
+import wasm from 'vite-plugin-wasm';
+
+
 const oklchToHex = str => {
   const DEFAULT_HUE = 250;
   const regex = /-?\d+(\.\d+)?/g;
@@ -53,7 +56,7 @@ export default defineConfig({
     }
   }), Compress({
     Image: false
-  }), svelte(), sitemap(), customToc(), react()],
+  }), svelte(), sitemap(), customToc(), react(), wasm()],
   markdown: {
     remarkPlugins: [remarkMath, remarkReadingTime, remarkDirective, parseDirectiveNode, remarkLinkCard],
     rehypePlugins: [rehypeKatex, rehypeSlug, [rehypeComponents, {
