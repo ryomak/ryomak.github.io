@@ -29,6 +29,8 @@ const feedCollection = defineCollection({
   }),
 })
 
+
+
 export const collections = {
   posts: postsCollection,
   feed: feedCollection,

@@ -1,7 +1,7 @@
 ---
-import type { Data } from '../art/data/data'
+import type { Data } from '../../art/data/data'
 import { readFile } from '../utils/file-reader';
-import { getArtWasmName } from '../art/data/data'
+import { getArtWasmName } from '../../art/data/data'
 
 interface Props {
 	art: Data;
@@ -130,6 +130,8 @@ const wasmFilePath = `/wasm/${art.language}_${art.name}.wasm`
 
     #canvas-detail {
         width: 100%;
+		min-width: 300px;
+		min-height: 300px;
 		display: flex;
 		justify-content: center;
 		align-items: center;
@@ -234,19 +236,7 @@ const wasmFilePath = `/wasm/${art.language}_${art.name}.wasm`
         }
     }
 
-    @keyframes glow {
-        0% {
-            box-shadow: 0 0 30px var(--art-primary-color);
-        }
-        50% {
-            box-shadow: 0 0 40px var(--art-secondary-color);
-        }
-        100% {
-            box-shadow: 0 0 30px var(--art-primary-color);
-        }
-    }
-
-    .artwork-detail {
+	.artwork-detail {
         animation: glow 5s infinite alternate;
     }
 </style>
