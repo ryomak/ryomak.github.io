@@ -1,0 +1,60 @@
+---
+import { arts, getArtWasmName } from "../art/data/data";
+---
+
+<h2>P5を用いた作品集</h2>
+<div class="art-gallery">
+  {arts.map((art) => (
+    <a href={`/art/detail/${getArtWasmName(art)}/`} class="artwork-card">
+      <img src={`/art/${art.language}/${art.name}/art.gif`} class="artwork-preview" />
+    </a>
+  ))}
+</div>
+
+<style>
+	h2 {
+		padding: 0 2rem;
+		font-size: 1.5rem;
+		margin: 0 0 1rem;
+	}
+  .art-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+    padding: 2rem;
+  }
+
+  .artwork-card {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+  }
+
+  .artwork-card:hover {
+    transform: translateY(-5px);
+  }
+
+  .artwork-preview {
+    width: 100%;
+    height: auto;
+  }
+
+  .artwork-name {
+    padding: 1rem;
+  }
+
+  .artwork-name h2 {
+    font-size: 1.2rem;
+    margin: 0 0 0.5rem;
+  }
+
+  .artwork-name p {
+    font-size: 0.9rem;
+    margin: 0;
+    color: #666;
+  }
+</style>

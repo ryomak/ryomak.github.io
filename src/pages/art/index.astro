@@ -1,0 +1,12 @@
+---
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import ArtGallery from '../../components/ArtGallery.astro';
+import {i18n} from "../../i18n/translation";
+import I18nKey from "../../i18n/i18nKey";
+---
+
+<MainGridLayout title={i18n(I18nKey.art)} description={i18n(I18nKey.art)} slug="none">
+    <main>
+        <ArtGallery />
+    </main>
+</MainGridLayout>

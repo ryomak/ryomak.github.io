@@ -18,5 +18,9 @@ export const LinkPresets: { [key in LinkPreset]: NavBarLink } = {
   [LinkPreset.Works]: {
     name: i18n(I18nKey.works),
     url: '/works/',
-  }
+  },
+    [LinkPreset.Art]: {
+        name: i18n(I18nKey.art),
+        url: '/art/',
+    },
 }

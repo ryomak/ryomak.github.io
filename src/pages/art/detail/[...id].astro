@@ -1,0 +1,24 @@
+---
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import ArtworkDetail from '../../../components/ArtworkDetail.astro';
+import { arts ,getArtWasmName } from "../../../art/data/data";
+import {i18n} from "../../../i18n/translation";
+import I18nKey from "../../../i18n/i18nKey";
+
+
+export async function getStaticPaths() {
+
+	return arts.map(art => ({
+		params: { id: getArtWasmName(art) },
+		props: { art },
+	}));
+}
+
+const { art } = Astro.props;
+---
+
+<MainGridLayout title={i18n(I18nKey.art)} description={i18n(I18nKey.art)} slug="none">
+    <main>
+        <ArtworkDetail art={art} />
+    </main>
+</MainGridLayout>

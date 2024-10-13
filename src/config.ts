@@ -29,6 +29,7 @@ export const navBarConfig: NavBarConfig = {
     LinkPreset.Archive,
     LinkPreset.Blog,
     LinkPreset.Works,
+    LinkPreset.Art,
     {
       name: 'GitHub',
       url: 'https://github.com/ryomak',

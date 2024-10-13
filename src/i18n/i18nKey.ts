@@ -4,6 +4,7 @@ enum I18nKey {
   blog = 'blog',
   archive = 'archive',
   works = 'works',
+  art = 'art',
 
   tags = 'tags',
   categories = 'categories',

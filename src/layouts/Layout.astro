@@ -102,6 +102,9 @@ const favicons: Favicon[] = siteConfig.favicon.length > 0 ? siteConfig.favicon :
 
 		<style define:vars={{ configHue }}></style>  <!-- defines global css variables. This will be applied to <html> <body> and some other elements idk why -->
 
+        <script src="https://cdn.jsdelivr.net/npm/p5@1.5.0/lib/p5.js"></script>
+        <script is:inline src={`/wasm/wasm_exec.js`}></script>
+
 		<SEO
 			openGraph={{
 				basic: {
