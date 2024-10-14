@@ -42,6 +42,7 @@
     "mdast-util-to-string": "^4.0.0",
     "overlayscrollbars": "^2.6.1",
     "pagefind": "^1.0.4",
+    "puppeteer": "^23.5.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "reading-time": "^1.5.0",

@@ -19,21 +19,21 @@ func main() {
 }
 
 func Generate(this js.Value, args []js.Value) any {
-	p5go.Execute(args[0].String(),
-		p5go.WithSetup(setup),
-		p5go.WithDraw(draw),
+	p5go.Run(args[0].String(),
+		p5go.Setup(setup),
+		p5go.Draw(draw),
 	)
 	return nil
 }
 
 var angle float64
 
-func setup(p *p5go.P5Instance) {
+func setup(p *p5go.Canvas) {
 	p.CreateCanvas(300, 300)
 	p.NoStroke()
 }
 
-func draw(p *p5go.P5Instance) {
+func draw(p *p5go.Canvas) {
 	// Gradient-like background
 	for i := 0; i < 300; i++ {
 		r := 220 - float64(i)*0.3
