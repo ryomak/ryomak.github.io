@@ -1,28 +1,29 @@
 ---
-import { getCollection } from 'astro:content';
-import MainGridLayout from "@layouts/MainGridLayout.astro";
-import ImageWrapper from "../../components/misc/ImageWrapper.astro";
-import PostMetadata from "../../components/PostMeta.astro";
-import {i18n} from "@i18n/translation";
-import I18nKey from "@i18n/i18nKey";
-import {getDir, getPostUrlBySlug} from "@utils/url-utils";
-import Markdown from "@components/misc/Markdown.astro";
-import path from "path";
-import ShareButton from "../../components/widget/ShareButton.astro"
-import {Icon} from "astro-icon/components";
+import { getCollection } from 'astro:content'
+import MainGridLayout from '@layouts/MainGridLayout.astro'
+import ImageWrapper from '../../components/misc/ImageWrapper.astro'
+import PostMetadata from '../../components/PostMeta.astro'
+import { i18n } from '@i18n/translation'
+import I18nKey from '@i18n/i18nKey'
+import { getDir, getPostUrlBySlug } from '@utils/url-utils'
+import Markdown from '@components/misc/Markdown.astro'
+import path from 'path'
+import ShareButton from '../../components/widget/ShareButton.astro'
+import { Icon } from 'astro-icon/components'
 
 export async function getStaticPaths() {
-    const blogEntries = await getCollection('posts', ({ data }) => {
-        return import.meta.env.PROD ? data.draft !== true : true;
-    });
-    return blogEntries.map(entry => ({
-        params: { slug: entry.slug }, props: { entry },
-    }));
+  const blogEntries = await getCollection('posts', ({ data }) => {
+    return import.meta.env.PROD ? data.draft !== true : true
+  })
+  return blogEntries.map(entry => ({
+    params: { slug: entry.slug },
+    props: { entry },
+  }))
 }
 
-const { entry  } = Astro.props;
+const { entry } = Astro.props
 
-const { Content , remarkPluginFrontmatter} = await entry.render();
+const { Content, remarkPluginFrontmatter } = await entry.render()
 
 const currentUrl = `${import.meta.env.SITE}/${entry.collection}/${entry.slug}/`
 ---

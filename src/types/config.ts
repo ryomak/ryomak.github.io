@@ -16,7 +16,7 @@ export type SiteConfig = {
 }
 
 export type Favicon = {
-  src: string,
+  src: string
   theme?: 'light' | 'dark'
   sizes?: string
 }
@@ -57,20 +57,19 @@ export type LicenseConfig = {
 }
 
 export type PinnedRepository = {
-    name: string
-    description: string
-    url: string
+  name: string
+  description: string
+  url: string
 }
 
-
 export type FeedItem = {
-  title: string;
-  published: Date;
-  draft: boolean;
-  description: string;
-  image: string;
-  tags : string[];
-  category: string;
-  external: boolean;
-  link: string;
-};
+  title: string
+  published: Date
+  draft: boolean
+  description: string
+  image: string
+  tags: string[]
+  category: string
+  external: boolean
+  link: string
+}

@@ -1,20 +1,19 @@
 ---
 import type { Data } from '../../art/data/data'
-import { readFile } from '../utils/file-reader';
+import { readFile } from '../utils/file-reader'
 import { getArtWasmName } from '../../art/data/data'
 
 interface Props {
-	art: Data;
+  art: Data
 }
 
-const { art } = Astro.props;
+const { art } = Astro.props
 if (!art) {
-	throw new Error('Art is not defined');
+  throw new Error('Art is not defined')
 }
 
-const rawCode = await readFile(art.language, art.name);
+const rawCode = await readFile(art.language, art.name)
 const wasmFilePath = `/wasm/${art.language}_${art.name}.wasm`
-
 ---
 
 <div class="artwork-detail">

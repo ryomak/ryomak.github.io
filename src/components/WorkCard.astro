@@ -1,28 +1,40 @@
 ---
-import path from "path";
-import ImageWrapper from "./misc/ImageWrapper.astro";
-import { Icon } from 'astro-icon/components';
-import {getDir} from "../utils/url-utils";
+import path from 'path'
+import ImageWrapper from './misc/ImageWrapper.astro'
+import { Icon } from 'astro-icon/components'
+import { getDir } from '../utils/url-utils'
 
 interface Props {
-    class: string;
-    entry: any;
-    title: string;
-    url: string;
-    published: Date;
-    tags: string[];
-    category: string;
-    image: string;
-    description: string;
-    words: number;
-    draft: boolean;
-    style: string;
+  class: string
+  entry: any
+  title: string
+  url: string
+  published: Date
+  tags: string[]
+  category: string
+  image: string
+  description: string
+  words: number
+  draft: boolean
+  style: string
 }
-const { entry, title, url, published, tags, category, image, description, words, style } = Astro.props;
-const className = Astro.props.class;
+const {
+  entry,
+  title,
+  url,
+  published,
+  tags,
+  category,
+  image,
+  description,
+  words,
+  style,
+} = Astro.props
+const className = Astro.props.class
 
-const imageUrl = image || "https://github.com/ryomak/ryomak.github.io/assets/21288308/0e893d2c-7e5b-4277-b1ea-0c0f2628fe82";
-
+const imageUrl =
+  image ||
+  'https://github.com/ryomak/ryomak.github.io/assets/21288308/0e893d2c-7e5b-4277-b1ea-0c0f2628fe82'
 ---
 <div class="w-full mb-4">
     <div class="space-y-6">

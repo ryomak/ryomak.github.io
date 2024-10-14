@@ -1,1 +1,10 @@
-{"title":"GCPでSendGridのメール内リンクをSSL化する","published":"2024-01-25","draft":false,"image":"","tags":["zenn"],"category":"Blog","external":true,"link":"https://zenn.dev/ryomak/articles/gcp-sendgrid-link-ssl"}
+{
+  "title": "GCPでSendGridのメール内リンクをSSL化する",
+  "published": "2024-01-25",
+  "draft": false,
+  "image": "",
+  "tags": ["zenn"],
+  "category": "Blog",
+  "external": true,
+  "link": "https://zenn.dev/ryomak/articles/gcp-sendgrid-link-ssl"
+}

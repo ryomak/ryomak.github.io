@@ -18,7 +18,7 @@ const feedCollection = defineCollection({
   type: 'data',
   schema: z.object({
     title: z.string(),
-    published: z.string().transform((str) => new Date(str)),
+    published: z.string().transform(str => new Date(str)),
     draft: z.boolean().optional(),
     description: z.string().optional(),
     image: z.string().optional(),
@@ -28,8 +28,6 @@ const feedCollection = defineCollection({
     link: z.string().optional(),
   }),
 })
-
-
 
 export const collections = {
   posts: postsCollection,

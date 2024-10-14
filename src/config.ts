@@ -1,6 +1,7 @@
 import type {
   LicenseConfig,
-  NavBarConfig, PinnedRepository,
+  NavBarConfig,
+  PinnedRepository,
   ProfileConfig,
   SiteConfig,
 } from './types/config'
@@ -15,12 +16,13 @@ export const siteConfig: SiteConfig = {
     enable: false,
     src: 'assets/images/demo-banner.png',
   },
-  favicon: [    // Leave this array empty to use the default favicon
+  favicon: [
+    // Leave this array empty to use the default favicon
     {
-      src: '/favicon/favicon.png',    // Path of the favicon, relative to the /public directory
-    }
+      src: '/favicon/favicon.png', // Path of the favicon, relative to the /public directory
+    },
   ],
-  xmlFeeds: ['https://zenn.dev/ryomak/feed','https://note.com/ryomak13/rss'],
+  xmlFeeds: ['https://zenn.dev/ryomak/feed', 'https://note.com/ryomak13/rss'],
 }
 
 export const navBarConfig: NavBarConfig = {

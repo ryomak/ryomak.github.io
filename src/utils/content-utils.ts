@@ -1,8 +1,8 @@
 import I18nKey from '@i18n/i18nKey'
 import { i18n } from '@i18n/translation'
-import {getCollection, getEntry, CollectionEntry} from 'astro:content'
+import { getCollection, getEntry, CollectionEntry } from 'astro:content'
 
-export async function getSortedPosts(category?:string) {
+export async function getSortedPosts(category?: string) {
   let allBlogPosts = await getCollection('posts', ({ data }) => {
     const isDraftDisplay = import.meta.env.PROD ? data.draft !== true : true
     const isCategoryOK = category ? data.category === category : true
@@ -11,7 +11,9 @@ export async function getSortedPosts(category?:string) {
 
   // Worksが指定された場合はfeedを取得しない
   if (category !== 'Works') {
-    const feedItems = await getCollection('feed', ({ data }) => {return true})
+    const feedItems = await getCollection('feed', ({ data }) => {
+      return true
+    })
 
     allBlogPosts = [...allBlogPosts, ...feedItems]
   }
@@ -21,7 +23,6 @@ export async function getSortedPosts(category?:string) {
     const dateB = new Date(b.data.published)
     return dateA > dateB ? -1 : 1
   })
-
 
   for (let i = 1; i < sorted.length; i++) {
     sorted[i].data.nextSlug = sorted[i - 1].slug
@@ -45,10 +46,11 @@ export async function getTagList(): Promise<Tag[]> {
     return import.meta.env.PROD ? data.draft !== true : true
   })
 
-  const feedItems = await getCollection('feed', ({ data }) => {return true})
+  const feedItems = await getCollection('feed', ({ data }) => {
+    return true
+  })
 
   allBlogPosts = [...allBlogPosts, ...feedItems]
-
 
   const countMap: { [key: string]: number } = {}
   allBlogPosts.map(post => {
@@ -76,10 +78,11 @@ export async function getCategoryList(): Promise<Category[]> {
     return import.meta.env.PROD ? data.draft !== true : true
   })
 
-  const feedItems = await getCollection('feed', ({ data }) => {return true})
+  const feedItems = await getCollection('feed', ({ data }) => {
+    return true
+  })
 
   allBlogPosts = [...allBlogPosts, ...feedItems]
-
 
   const count: { [key: string]: number } = {}
   allBlogPosts.map(post => {
@@ -103,4 +106,3 @@ export async function getCategoryList(): Promise<Category[]> {
   }
   return ret
 }
-

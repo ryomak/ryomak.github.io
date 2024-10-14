@@ -3,59 +3,62 @@ import { onMount } from 'svelte'
 let keywordDesktop = ''
 let keywordMobile = ''
 let result = []
-const fakeResult = [{
+const fakeResult = [
+  {
     url: '/',
     meta: {
-        title: 'This Is a Fake Search Result'
+      title: 'This Is a Fake Search Result',
     },
-    excerpt: 'Because the search cannot work in the <mark>dev</mark> environment.'
-}, {
+    excerpt:
+      'Because the search cannot work in the <mark>dev</mark> environment.',
+  },
+  {
     url: '/',
     meta: {
-        title: 'If You Want to Test the Search'
+      title: 'If You Want to Test the Search',
     },
-    excerpt: 'Try running <mark>npm build && npm preview</mark> instead.'
-}]
+    excerpt: 'Try running <mark>npm build && npm preview</mark> instead.',
+  },
+]
 
 let search = (keyword: string, isDesktop: boolean) => {}
 
 onMount(() => {
-    search = async (keyword: string, isDesktop: boolean) => {
-        let panel = document.getElementById('search-panel')
-        if (!panel)
-            return
+  search = async (keyword: string, isDesktop: boolean) => {
+    let panel = document.getElementById('search-panel')
+    if (!panel) return
 
-        if (!keyword && isDesktop) {
-            panel.classList.add("closed")
-            return
-        }
-
-        let arr = [];
-        if (import.meta.env.PROD) {
-            const ret = await pagefind.search(keyword)
-            for (const item of ret.results) {
-                arr.push(await item.data())
-            }
-        } else {
-            // Mock data for non-production environment
-            arr = fakeResult
-        }
-
-        if (!arr.length && isDesktop) {
-            panel.classList.add("closed")
-            return
-        }
-
-        if (isDesktop) {
-            panel.classList.remove("closed")
-        }
-        result = arr
+    if (!keyword && isDesktop) {
+      panel.classList.add('closed')
+      return
     }
+
+    let arr = []
+    if (import.meta.env.PROD) {
+      const ret = await pagefind.search(keyword)
+      for (const item of ret.results) {
+        arr.push(await item.data())
+      }
+    } else {
+      // Mock data for non-production environment
+      arr = fakeResult
+    }
+
+    if (!arr.length && isDesktop) {
+      panel.classList.add('closed')
+      return
+    }
+
+    if (isDesktop) {
+      panel.classList.remove('closed')
+    }
+    result = arr
+  }
 })
 
 const togglePanel = () => {
-    let panel = document.getElementById('search-panel')
-    panel?.classList.toggle("closed")
+  let panel = document.getElementById('search-panel')
+  panel?.classList.toggle('closed')
 }
 
 $: search(keywordDesktop, true)

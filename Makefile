@@ -30,3 +30,6 @@ clean:
 $(WASM_DIR)/wasm_exec.js:
 	cp $$(go env GOROOT)/misc/wasm/wasm_exec.js $(WASM_DIR)/
 
+update-all:
+	yarn build
+	make go-build-all
