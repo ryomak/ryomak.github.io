@@ -19,7 +19,7 @@ Goでクリエイティブコーディングをしたく、ライブラリ作っ
 https://speakerdeck.com/chobishiba/creative-coding-creating-your-own-world?slide=42
 
 ## 作ったもの
-GoでP5.jsを実行するライブラリです。
+GoでP5.jsを実行するライブラリです。  
 Ruby版を作ってらっしゃる方がいたので、同じ思想で作りました。
 https://ongaeshi.hatenablog.com/entry/2023/03/10/021113
 
@@ -28,10 +28,10 @@ https://github.com/ryomak/p5go/tree/main/example
 githubに載せています
 
 以下例です。流れをざっくりまとめるとこんな感じです
-1.Run関数で、第一引数に、セレクターを指定
-2. P5.jsのように、setup関数とdraw関数を実装
-3. wasmで実行されるので、`go_ruby_image` に、generateと言う関数を登録 
-4. html側で、`go_ruby_image.generate`を呼び出す
+1. Run関数で、第一引数に、セレクターを指定=> 指定したセレクターにcanvasが生成されます  
+2. P5.jsのように、setup関数とdraw関数を実装  
+3. wasmで実行され、、`go_ruby_image` に、generateと言う関数を登録   
+4. html側で、`go_ruby_image.generate`を呼び出す  
 
 ### 結果
 ![](art.png)
