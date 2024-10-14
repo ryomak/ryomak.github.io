@@ -102,8 +102,8 @@ const wasmFilePath = `/wasm/${art.language}_${art.name}.wasm`
         --art-bg-color: #0a0a0a;
         --art-text-color: #ffffff;
 
-        width: 95%;
-        margin: 12px auto;
+        width: 97%;
+        margin: 8px auto;
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
@@ -118,7 +118,7 @@ const wasmFilePath = `/wasm/${art.language}_${art.name}.wasm`
         display: flex;
         flex-direction: column;
 		justify-content: space-around;
-		padding: 24px;
+		padding: 18px;
 		box-sizing: border-box;
         gap: 2rem;
 		overflow: hidden;
@@ -126,11 +126,13 @@ const wasmFilePath = `/wasm/${art.language}_${art.name}.wasm`
 
     .canvas-container {
         position: relative;
-        min-width: fit-content;
+		display: flex;
+		justify-content: center;
+		align-content: center;
         overflow: hidden;
         border-radius: 15px;
         box-shadow: 0 0 40px rgba(0, 255, 255, 0.4);
-        padding: 1rem;
+        padding: 12px;
     }
 
     #canvas-detail {
@@ -140,7 +142,7 @@ const wasmFilePath = `/wasm/${art.language}_${art.name}.wasm`
 		display: flex;
 		justify-content: center;
 		align-items: center;
-        border-radius: 15px;
+        border-radius: 12px;
         margin: auto;
     }
 
