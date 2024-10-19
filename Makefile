@@ -17,7 +17,6 @@ help:
 
 go-build: $(WASM_DIR)/wasm_exec.js
 	cd $(GO_DIR)  && GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO) build -o ../../$(WASM_DIR)/$(ART_LANG)_$(ART_NAME).wasm $(ART_NAME)/main.go
-	sh scripts/art_gif.sh $(ART_LANG) $(ART_NAME)
 go-build-all:
 	for dir in $(shell find $(GO_DIR) -mindepth 1 -maxdepth 1 -type d); do \
 		ART_NAME=$$(basename $$dir) $(MAKE) go-build; \
