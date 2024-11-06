@@ -29,7 +29,7 @@ async function fetchFeedItems(url: string) {
 	const feed = await parser.parseURL(url);
 	if (!feed?.items?.length) return [];
 	const tags = []
-	const keywords = ['zenn', 'note']
+	const keywords = ['zenn', 'note', 'scrapbox']
 	keywords.forEach(keyword => {
 		if (url.indexOf(keyword) !== -1) {
 			tags.push(keyword)
