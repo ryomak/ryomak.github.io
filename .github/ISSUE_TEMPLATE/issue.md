@@ -7,15 +7,14 @@ assignees: ""
 ---
 
 ## <!-- Issueタイトルはslugとして使用。時刻は埋めなくて良い -->
-
-publishDate:
-modDatetime:
+---
+published: 2024-08-20
 title:
 showToc: false
 draft: true
-tags: ['memo']
+tags: []
 category: Blog
-- description:
+description:
 
 ---
 
