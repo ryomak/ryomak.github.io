@@ -1,0 +1,37 @@
+name: publish content from GitHub Issue
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check issue labels
+        if: contains(github.event.issue.labels.*.name, 'publish') != true
+        run: exit 0
+      - name: Define title
+        id: define_title
+        run: |
+          title=$(echo "${{ github.event.issue.title }}" | sed -r 's/([a-z0-9])([A-Z])/\1-\2/g; s/ /-/g' | tr '[A-Z]' '[a-z]')
+          echo "title=$title" >> $GITHUB_OUTPUT
+      - name: Create Content File
+        run: |
+          echo -e "${{ github.event.issue.body }}" | sed -e "s/publishDate:/publishDate: $(TZ=-9 date -Iseconds)/" | sed -e "s/modDatetime:/modDatetime: $(TZ=-9 date -Iseconds)/" >> src/content/blog/${{ steps.define_title.outputs.title }}.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit Content File
+        uses: EndBug/add-and-commit@v9
+        with:
+          new_branch: ${{ steps.define_title.outputs.title }}
+      - name: Create PullRequest
+        run: gh pr create --title "${{ github.event.issue.title }}" --body "#${{ github.event.issue.number}}" --base main --head ${{ steps.define_title.outputs.title }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Close Issue
+        run: gh issue close ${{ github.event.issue.number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
