@@ -20,7 +20,7 @@ jobs:
           echo "title=$title" >> $GITHUB_OUTPUT
       - name: Create Content File
         run: |
-          echo -e "${{ github.event.issue.body }}" | sed -e "s/publishDate:/publishDate: $(TZ=-9 date -Iseconds)/" | sed -e "s/modDatetime:/modDatetime: $(TZ=-9 date -Iseconds)/" >> src/content/blog/${{ steps.define_title.outputs.title }}.md
+          echo -e "${{ github.event.issue.body }}" >> src/content/posts/${{ steps.define_title.outputs.title }}.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Commit Content File
