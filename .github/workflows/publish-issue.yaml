@@ -49,6 +49,12 @@ jobs:
           TITLE: "${{ steps.define_date_and_filename.outputs.title }}"
           DESCRIPTION: "${{ steps.generate_description.outputs.description }}"
           FILENAME: "${{ steps.define_date_and_filename.outputs.filename }}"
+      - name: Check for Changes
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
       - name: Commit Content File
         uses: EndBug/add-and-commit@v9
         with:
@@ -57,7 +63,7 @@ jobs:
           default_author: github_actions
       - name: Create or Update Pull Request
         run: |
-          pr_number=$(gh pr view $BRANCH_NAME --json number --jq '.number' --head "${BRANCH_NAME}" || echo "")
+          pr_number=$(gh pr view $BRANCH_NAME --json number --jq '.number' || echo "")
           if [ -n "$pr_number" ]; then
             pr_state=$(gh pr view $pr_number --json state --jq '.state')
             if [ "$pr_state" = "CLOSED" ]; then
@@ -65,7 +71,7 @@ jobs:
             fi
             gh pr edit $pr_number --title "$TITLE" --body "#$ISSUE_ID"
           else
-            gh pr create --title "$TITLE" --body "#$ISSUE_ID" --base main --head $BRANCH_NAME
+            gh pr create --title "$TITLE" --body "#$ISSUE_ID" --base main --head "$BRANCH_NAME"
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
