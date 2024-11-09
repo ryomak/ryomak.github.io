@@ -66,8 +66,8 @@ jobs:
           fi
           git add src/content/posts/$FILENAME
           git commit -m "Update content from issue #$ISSUE_ID"
-          git pull --rebase origin $BRANCH_NAME || true
-          git push -u origin $BRANCH_NAME
+          git pull --rebase origin $BRANCH_NAME
+          git push origin $BRANCH_NAME
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH_NAME: "${{ steps.define_date_and_filename.outputs.branch_name }}"
