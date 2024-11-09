@@ -2,7 +2,7 @@ name: publish content from GitHub Issue
 
 on:
   issues:
-    types: [labeled]
+    types: [labeled, reopened]
   workflow_dispatch:
 
 jobs:
@@ -10,25 +10,57 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check issue labels
+      - name: Check issue template
         if: contains(github.event.issue.labels.*.name, 'publish') != true
         run: exit 0
-      - name: Define title
-        id: define_title
+      - name: Define date and file name
+        id: define_date_and_filename
         run: |
-          title=$(echo "${{ github.event.issue.title }}" | sed -r 's/([a-z0-9])([A-Z])/\1-\2/g; s/ /-/g' | tr '[A-Z]' '[a-z]')
+          date=$(date +%Y%m%d)
+          issue_id=${{ github.event.issue.number }}
+          title=${{ github.event.issue.title }}
+          filename="${date}_${issue_id}.md"
+          branch_name="issue-${issue_id}"
+          echo "filename=$filename" >> $GITHUB_OUTPUT
+          echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
           echo "title=$title" >> $GITHUB_OUTPUT
-      - name: Create Content File
+          echo "branch_name=$branch_name" >> $GITHUB_OUTPUT
+      - name: Generate Description with OpenAI API
+        id: generate_description
         run: |
-          echo -e "${{ github.event.issue.body }}" >> src/content/posts/${{ steps.define_title.outputs.title }}.md
+          issue_body=$(echo "${{ github.event.issue.body }}" | tr -d '\n')
+                                                       description=$(curl -s -X POST "https://api.openai.com/v1/completions" \
+                                                       -H "Content-Type: application/json" \
+                                                       -H "Authorization: Bearer $OPENAI_API_KEY" \
+                                                       -d "{\"model\": \"text-davinci-003\", \"prompt\": \"Summarize the following text in around 30 characters: $issue_body\", \"max_tokens\": 30}" | jq -r '.choices[0].text' | tr -d '\n')
+                                                       echo "description=$description" >> $GITHUB_OUTPUT
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      - name: Create or Update Content File
+        run: |
+          content=$(echo "${{ github.event.issue.body }}" | sed -r "s/published: [0-9]{4}-[0-9]{2}-[0-9]{2}/published: ${{ steps.define_date_and_filename.outputs.date }}/" | sed -r "s/title: .*/title: '${{ steps.define_date_and_filename.outputs.title }}'/" | sed -r "s/description: .*/description: '${{ steps.generate_description.outputs.description }}'/")
+          filepath=src/content/posts/${{ steps.define_date_and_filename.outputs.filename }}
+          echo -e "$content" > $filepath
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Commit Content File
         uses: EndBug/add-and-commit@v9
         with:
-          new_branch: ${{ steps.define_title.outputs.title }}
-      - name: Create PullRequest
-        run: gh pr create --title "${{ github.event.issue.title }}" --body "#${{ github.event.issue.number}}" --base main --head ${{ steps.define_title.outputs.title }}
+          branch: ${{ steps.define_date_and_filename.outputs.branch_name }}
+          message: "Update content from issue #${{ github.event.issue.number }}"
+          default_author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+      - name: Create or Update Pull Request
+        run: |
+          pr_number=$(gh pr view ${{ steps.define_date_and_filename.outputs.branch_name }} --json number --jq '.number' || echo "")
+          if [ -n "$pr_number" ]; then
+            pr_state=$(gh pr view $pr_number --json state --jq '.state')
+            if [ "$pr_state" = "CLOSED" ]; then
+              gh pr reopen $pr_number
+            fi
+            gh pr edit $pr_number --title "${{ steps.define_date_and_filename.outputs.title }}" --body "#${{ github.event.issue.number}}"
+          else
+            gh pr create --title "${{ steps.define_date_and_filename.outputs.title }}" --body "#${{ github.event.issue.number}}" --base main --head ${{ steps.define_date_and_filename.outputs.branch_name }}
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Close Issue
