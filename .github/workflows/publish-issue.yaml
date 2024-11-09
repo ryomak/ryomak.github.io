@@ -78,7 +78,6 @@ jobs:
           if [ -n "$pr_number" ]; then
             pr_state=$(gh pr view $pr_number --json state --jq '.state')
             if [ "$pr_state" = "CLOSED" ]; then
-              gh pr delete $pr_number
               gh pr create --title "$TITLE" --body "#$ISSUE_ID" --base main --head "$BRANCH_NAME"
             else
               gh pr edit $pr_number --title "$TITLE" --body "#$ISSUE_ID"
