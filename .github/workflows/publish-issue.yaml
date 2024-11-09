@@ -50,15 +50,13 @@ jobs:
           TITLE: "${{ steps.define_date_and_filename.outputs.title }}"
           DESCRIPTION: "${{ steps.generate_description.outputs.description }}"
         run: |
-          d = if [ -z "$DESCRIPTION" ]; then
-            echo "description: $TITLE"
-          else
-            echo "description: $DESCRIPTION"
+          if [ -z "$DESCRIPTION" ] || [ "$DESCRIPTION" = "null" ]; then
+            DESCRIPTION="$TITLE"
           fi
           content=$(echo "$ISSUE_BODY" | sed -e '0,/## By Issue/d' \
                     -e "0,/^published: .*/s//published: $DATE/" \
                     -e "0,/^title: .*/s//title: $TITLE/" \
-                    -e "0,/^description: .*/s//description: $d/")
+                    -e "0,/^description: .*/s//description: $DESCRIPTION/")
 
           filepath=src/content/posts/$FILENAME
           echo -e "$content" > $filepath
