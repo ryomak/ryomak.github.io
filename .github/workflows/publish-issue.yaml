@@ -9,9 +9,9 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
       ISSUE_ID: "${{ github.event.issue.number }}"
-      ISSUE_BODY: "$(echo "${{ github.event.issue.body }}" | sed '/^## By Issue$/d')"
+      ISSUE_BODY: $(echo "${{ github.event.issue.body }}" | sed '/^## By Issue$/d')
 
     steps:
       - uses: actions/checkout@v4
