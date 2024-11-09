@@ -39,7 +39,7 @@ jobs:
           ISSUE_BODY: "${{ github.event.issue.body }}"
       - name: Create or Update Content File
         run: |
-          content="$(echo "$ISSUE_BODY" | sed -r "s/published: .*/published: $DATE/" | sed -r "s/title: .*/title: '$TITLE'/" | sed -r "s/description: .*/description: '$DESCRIPTION'/" | tr -d '\r\n' )"
+          content="$(echo "$ISSUE_BODY" | tr -d '\r\n' | sed -r "s/published: [0-9]{4}-[0-9]{2}-[0-9]{2}/published: $DATE/" | sed -r "s/title: .*/title: '$TITLE'/" | sed -r "s/description: .*/description: '$DESCRIPTION'/")"
           filepath=src/content/posts/$FILENAME
           echo -e "$content" > $filepath
         env:
@@ -59,9 +59,14 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b $BRANCH_NAME
+          if git rev-parse --verify $BRANCH_NAME >/dev/null 2>&1; then
+            git checkout $BRANCH_NAME
+          else
+            git checkout -b $BRANCH_NAME
+          fi
           git add src/content/posts/$FILENAME
           git commit -m "Update content from issue #$ISSUE_ID"
+          git pull --rebase origin $BRANCH_NAME
           git push origin $BRANCH_NAME
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
