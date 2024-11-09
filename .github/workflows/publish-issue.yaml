@@ -39,7 +39,7 @@ jobs:
           ISSUE_BODY: "${{ github.event.issue.body }}"
       - name: Create or Update Content File
         run: |
-          content="$(echo "$ISSUE_BODY" | tr -d '\r\n' | sed -r "s/published: [0-9]{4}-[0-9]{2}-[0-9]{2}/published: $DATE/" | sed -r "s/title: .*/title: '$TITLE'/" | sed -r "s/description: .*/description: '$DESCRIPTION'/")"
+          content="$(echo "$ISSUE_BODY"  | sed -r "s/published: .*/published: $DATE/" | sed -r "s/title: .*/title: '$TITLE'/" | sed -r "s/description: .*/description: '$DESCRIPTION'/") | tr -d '\r\n'"
           filepath=src/content/posts/$FILENAME
           echo -e "$content" > $filepath
         env:
