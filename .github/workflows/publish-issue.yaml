@@ -38,7 +38,7 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          issue_body=$(echo "$ISSUE_BODY" | tr -d '\r\n' | sed '0,/^## By Issue.*//'' )
+          issue_body=$(echo "$ISSUE_BODY" | sed -e '1,/## By Issue/d')
           description=$(curl -s -X POST "https://api.openai.com/v1/completions" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $OPENAI_API_KEY" \
@@ -52,10 +52,10 @@ jobs:
           TITLE: "${{ steps.define_date_and_filename.outputs.title }}"
           DESCRIPTION: "${{ steps.generate_description.outputs.description }}"
         run: |
-          content=$(echo "$ISSUE_BODY" | sed '0,/^## By Issue.*//' | \
-                    sed "0,/published: .*/s//published: $DATE/" | \
-                    sed "0,/title: .*/s//title: $TITLE/" | \
-                    sed "0,/description: .*/s//description: $DESCRIPTION/")
+          content=$(echo "$ISSUE_BODY" | sed -e '1,/## By Issue/d' \
+                    -e "s/^published: .*/published: $DATE/" \
+                    -e "s/^title: .*/title: $TITLE/" \
+                    -e "s/^description: .*/description: $DESCRIPTION/")
           filepath=src/content/posts/$FILENAME
           echo -e "$content" > $filepath
 
