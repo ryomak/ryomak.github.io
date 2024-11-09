@@ -40,7 +40,7 @@ jobs:
           description=$(curl -s -X POST "https://api.openai.com/v1/completions" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $OPENAI_API_KEY" \
-            -d "{\"model\": \"gpt-3.5-turbo-instruct\", \"prompt\": \"以下文章はAstroの記事です。記事の内容を詳細を30文字以内で要約してください。\\n\\n $issue_body\"}" | jq -r '.choices[0].text' | tr -d '\r\n')
+            -d "{\"model\": \"gpt-3.5-turbo-instruct\", \"prompt\": \"以下記事の内容の詳細を30文字以内で要約してください。\\n\\n $issue_body\"}" | jq -r '.choices[0].text' | tr -d '\r\n')
           echo "description=$description" >> $GITHUB_OUTPUT
 
       - name: Create or Update Content File
