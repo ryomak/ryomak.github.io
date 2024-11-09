@@ -12,10 +12,8 @@ jobs:
       GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
       ISSUE_ID: "${{ github.event.issue.number }}"
       ISSUE_BODY: "${{ github.event.issue.body }}"
-
     steps:
       - uses: actions/checkout@v4
-
       - name: Check issue labels
         if: contains(github.event.issue.labels.*.name, 'publish') != true
         run: exit 0
