@@ -57,6 +57,8 @@ jobs:
           fi
       - name: Commit Content File
         run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b $BRANCH_NAME
           git add src/content/posts/$FILENAME
           git commit -m "Update content from issue #$ISSUE_ID"
