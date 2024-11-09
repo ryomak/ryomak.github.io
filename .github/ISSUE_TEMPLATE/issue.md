@@ -12,7 +12,7 @@ published:
 title: 
 showToc: false
 draft: false
-tags: ['blog']
+tags: [blog]
 category: Blog
 description: 
 
