@@ -54,7 +54,7 @@ jobs:
         with:
           branch: ${{ steps.define_date_and_filename.outputs.branch_name }}
           message: "Update content from issue #${{ github.event.issue.number }}"
-          default_author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+          default_author: github_actions
       - name: Create or Update Pull Request
         run: |
           pr_number=$(gh pr view $BRANCH_NAME --json number --jq '.number' || echo "")
