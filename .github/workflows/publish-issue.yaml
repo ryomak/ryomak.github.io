@@ -20,7 +20,7 @@ jobs:
           issue_id=${{ github.event.issue.number }}
           title=${{ github.event.issue.title }}
           filename="${date}_${issue_id}.md"
-          branch_name="issue-${issue_id}"
+          branch_name="${date}_${issue_id}"
           echo "filename=$filename" >> $GITHUB_OUTPUT
           echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
           echo "title=$title" >> $GITHUB_OUTPUT
@@ -57,7 +57,7 @@ jobs:
           default_author: github_actions
       - name: Create or Update Pull Request
         run: |
-          pr_number=$(gh pr view $BRANCH_NAME --json number --jq '.number' || echo "")
+          pr_number=$(gh pr view $BRANCH_NAME --json number --jq '.number' --head "${BRANCH_NAME}" || echo "")
           if [ -n "$pr_number" ]; then
             pr_state=$(gh pr view $pr_number --json state --jq '.state')
             if [ "$pr_state" = "CLOSED" ]; then
