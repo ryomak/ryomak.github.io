@@ -39,7 +39,7 @@ jobs:
           ISSUE_BODY: "${{ github.event.issue.body }}"
       - name: Create or Update Content File
         run: |
-          content="$(echo "$ISSUE_BODY"  | sed -r "s/published: .*/published: $DATE/" | sed -r "s/title: .*/title: '$TITLE'/" | sed -r "s/description: .*/description: '$DESCRIPTION'/") | tr -d '\r\n'"
+          content="$(echo "$ISSUE_BODY" | tr -d '\r\n' | sed -r "s/published: [0-9]{4}-[0-9]{2}-[0-9]{2}/published: $DATE/" | sed -r "s/title: .*/title: '$TITLE'/" | sed -r "s/description: .*/description: '$DESCRIPTION'/")"
           filepath=src/content/posts/$FILENAME
           echo -e "$content" > $filepath
         env:
@@ -56,11 +56,16 @@ jobs:
             exit 0
           fi
       - name: Commit Content File
-        uses: EndBug/add-and-commit@v9
-        with:
-          branch: ${{ steps.define_date_and_filename.outputs.branch_name }}
-          message: "Update content from issue #${{ github.event.issue.number }}"
-          default_author: github_actions
+        run: |
+          git checkout -b $BRANCH_NAME
+          git add src/content/posts/$FILENAME
+          git commit -m "Update content from issue #$ISSUE_ID"
+          git push origin $BRANCH_NAME
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: "${{ steps.define_date_and_filename.outputs.branch_name }}"
+          FILENAME: "${{ steps.define_date_and_filename.outputs.filename }}"
+          ISSUE_ID: "${{ github.event.issue.number }}"
       - name: Create or Update Pull Request
         run: |
           pr_number=$(gh pr view $BRANCH_NAME --json number --jq '.number' || echo "")
