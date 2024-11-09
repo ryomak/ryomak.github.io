@@ -35,6 +35,7 @@ jobs:
         id: generate_description
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        continue-on-error: false
         run: |
           issue_body=$(echo "$ISSUE_BODY" | sed -e '0,/## By Issue/d')
           description=$(curl -s -X POST "https://api.openai.com/v1/completions" \
