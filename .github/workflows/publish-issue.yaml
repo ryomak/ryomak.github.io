@@ -8,11 +8,18 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      ISSUE_ID: "${{ github.event.issue.number }}"
+      ISSUE_BODY: "$(echo "${{ github.event.issue.body }}" | sed '/^## By Issue$/d')"
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Check issue labels
         if: contains(github.event.issue.labels.*.name, 'publish') != true
         run: exit 0
+
       - name: Define date and file name
         id: define_date_and_filename
         run: |
@@ -25,37 +32,41 @@ jobs:
           echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
           echo "title=$title" >> $GITHUB_OUTPUT
           echo "branch_name=$branch_name" >> $GITHUB_OUTPUT
+
       - name: Generate Description with OpenAI API
         id: generate_description
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          issue_body="$(echo "$ISSUE_BODY" | tr -d '\r\n')"
+          issue_body=$(echo "$ISSUE_BODY" | tr -d '\r\n')
           description=$(curl -s -X POST "https://api.openai.com/v1/completions" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $OPENAI_API_KEY" \
-            -d "{\"model\": \"davinci-002\", \"prompt\": \"Summarize the following text in around 30 characters in japanses: $issue_body\", \"max_tokens\": 30}" | jq -r '.choices[0].text' | tr -d '\r\n')
+            -d "{\"model\": \"text-davinci-003\", \"prompt\": \"Summarize the following text in around 30 characters: $issue_body\", \"max_tokens\": 30}" | jq -r '.choices[0].text' | tr -d '\r\n')
           echo "description=$description" >> $GITHUB_OUTPUT
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ISSUE_BODY: "${{ github.event.issue.body }}"
+
       - name: Create or Update Content File
-        run: |
-          content="$(echo "$ISSUE_BODY"  | sed -r "s/published: .*/published: $DATE/" | sed -r "s/title: .*/title: '$TITLE'/" | sed -r "s/description: .*/description: '$DESCRIPTION'/"  )"
-          filepath=src/content/posts/$FILENAME
-          echo -e "$content" > $filepath
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_BODY: "${{ github.event.issue.body }}"
+          FILENAME: "${{ steps.define_date_and_filename.outputs.filename }}"
           DATE: "${{ steps.define_date_and_filename.outputs.date }}"
           TITLE: "${{ steps.define_date_and_filename.outputs.title }}"
           DESCRIPTION: "${{ steps.generate_description.outputs.description }}"
-          FILENAME: "${{ steps.define_date_and_filename.outputs.filename }}"
+        run: |
+          content=$(echo "$ISSUE_BODY" | sed -r "s/published: .*/published: $DATE/" | sed -r "s/title: .*/title: '$TITLE'/" | sed -r "s/description: .*/description: '$DESCRIPTION'/")
+          filepath=src/content/posts/$FILENAME
+          echo -e "$content" > $filepath
+
       - name: Check for Changes
         run: |
           if git diff --quiet; then
             echo "No changes to commit"
             exit 0
           fi
+
       - name: Commit Content File
+        env:
+          BRANCH_NAME: "${{ steps.define_date_and_filename.outputs.branch_name }}"
+          FILENAME: "${{ steps.define_date_and_filename.outputs.filename }}"
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -66,13 +77,12 @@ jobs:
           git checkout -b $BRANCH_NAME
           git add src/content/posts/$FILENAME
           git commit -m "Update content from issue #$ISSUE_ID"
-          git push -u -f origin $BRANCH_NAME
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH_NAME: "${{ steps.define_date_and_filename.outputs.branch_name }}"
-          FILENAME: "${{ steps.define_date_and_filename.outputs.filename }}"
-          ISSUE_ID: "${{ github.event.issue.number }}"
+          git push -u origin $BRANCH_NAME --force
+
       - name: Create or Update Pull Request
+        env:
+          BRANCH_NAME: "${{ steps.define_date_and_filename.outputs.branch_name }}"
+          TITLE: "${{ steps.define_date_and_filename.outputs.title }}"
         run: |
           pr_number=$(gh pr view $BRANCH_NAME --json number --jq '.number' || echo "")
           if [ -n "$pr_number" ]; then
@@ -85,13 +95,6 @@ jobs:
           else
             gh pr create --title "$TITLE" --body "#$ISSUE_ID" --base main --head "$BRANCH_NAME"
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH_NAME: "${{ steps.define_date_and_filename.outputs.branch_name }}"
-          TITLE: "${{ steps.define_date_and_filename.outputs.title }}"
-          ISSUE_ID: "${{ github.event.issue.number }}"
+
       - name: Close Issue
         run: gh issue close $ISSUE_ID
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_ID: "${{ github.event.issue.number }}"
