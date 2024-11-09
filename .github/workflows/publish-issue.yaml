@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check issue template
+      - name: Check issue labels
         if: contains(github.event.issue.labels.*.name, 'publish') != true
         run: exit 0
       - name: Define date and file name
@@ -29,18 +29,18 @@ jobs:
         id: generate_description
         run: |
           issue_body=$(echo "${{ github.event.issue.body }}" | tr -d '\r' | tr -d '\n')
-                                                       description=$(curl -s -X POST "https://api.openai.com/v1/completions" \
-                                                       -H "Content-Type: application/json" \
-                                                       -H "Authorization: Bearer $OPENAI_API_KEY" \
-                                                       -d "{\"model\": \"text-davinci-003\", \"prompt\": \"Summarize the following text in around 30 characters: $issue_body\", \"max_tokens\": 30}" | jq -r '.choices[0].text' | tr -d '\r' | tr -d '\n')
-                                                       echo "description=$description" >> $GITHUB_OUTPUT
+          description=$(curl -s -X POST "https://api.openai.com/v1/completions" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -d "{\"model\": \"text-davinci-003\", \"prompt\": \"Summarize the following text in around 30 characters: $issue_body\", \"max_tokens\": 30}" | jq -r '.choices[0].text' | tr -d '\r' | tr -d '\n')
+          echo "description=$description" >> $GITHUB_OUTPUT
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       - name: Create or Update Content File
         run: |
           content=$(echo "${{ github.event.issue.body }}" | tr -d '\r' | sed -r "s/published: [0-9]{4}-[0-9]{2}-[0-9]{2}/published: ${{ steps.define_date_and_filename.outputs.date }}/" | sed -r "s/title: .*/title: '${{ steps.define_date_and_filename.outputs.title }}'/" | sed -r "s/description: .*/description: '${{ steps.generate_description.outputs.description }}'/")
           filepath=src/content/posts/${{ steps.define_date_and_filename.outputs.filename }}
-          echo -e "$content" > $filepath
+          echo -e "$content" | tr -d '\r' > $filepath
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Commit Content File
