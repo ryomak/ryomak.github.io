@@ -22,7 +22,7 @@ export const siteConfig: SiteConfig = {
       src: '/favicon/favicon.png', // Path of the favicon, relative to the /public directory
     },
   ],
-  xmlFeeds: ['https://zenn.dev/ryomak/feed', 'https://note.com/ryomak13/rss'],//"https://scrapbox.io/api/feed/ryomak/"],
+  xmlFeeds: ['https://zenn.dev/ryomak/feed', 'https://note.com/ryomak13/rss']//,"https://scrapbox.io/api/feed/ryomak/"],
 }
 
 export const navBarConfig: NavBarConfig = {

@@ -12,19 +12,19 @@ draft: false
 ## Langchaingo
 - Weaviateプラグインの実装  
 
-https://github.com/tmc/langchaingo/commits?author=RyomaK
+https://github.com/tmc/langchaingo/commits?author=ryomak
 
 ## go-swagger
 - タイポ修正  
 
-https://github.com/go-swagger/go-swagger/commits?author=RyomaK
+https://github.com/go-swagger/go-swagger/commits?author=ryomak
 
 ## go-openai
 - テストケース修正  
 
-https://github.com/sashabaranov/go-openai/commits?author=RyomaK
+https://github.com/sashabaranov/go-openai/commits?author=ryomak
 
 ## go
 - deprecatedな関数をreplace  
 
-https://github.com/golang/go/commits?author=RyomaK
+https://github.com/golang/go/commits?author=yomak
