@@ -74,6 +74,11 @@ https://www.ryomak.jp/posts/oss-p5go/
 https://www.ryomak.jp/art/detail/go_move_eye/
 
 
+## 	情報処理安全確保支援士試験(SC) 合格
+2023年の秋に受けた情報処理安全確保支援士試験に合格しました。
+セキュリティ周りの前提知識を深めるために受験しました。　　
+
+なんとか合格してよかったです！
 
 ## 登壇
 
