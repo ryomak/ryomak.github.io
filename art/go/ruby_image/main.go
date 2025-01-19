@@ -1,30 +1,19 @@
 package main
 
 import (
-	"syscall/js"
 	"math"
 
 	"github.com/ryomak/p5go"
 )
 
-const (
-    name = "go_ruby_image"
-)
-
 func main() {
-	js.Global().Set(name, js.ValueOf(map[string]any{
-		"generate":    js.FuncOf(Generate),
-	}))
-	select {}
-}
-
-func Generate(this js.Value, args []js.Value) any {
-	p5go.Run(args[0].String(),
+	p5go.Run("#canvas-detail",
 		p5go.Setup(setup),
 		p5go.Draw(draw),
 	)
-	return nil
+	select {}
 }
+
 
 var angle float64
 

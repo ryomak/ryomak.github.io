@@ -2,7 +2,11 @@
 import { arts, getArtWasmName } from '../../art/data/data'
 ---
 
-<h2>P5を用いた作品集</h2>
+<main>
+<h2>Webエディタ</h2>
+<p>wasmを用いたコードエディタです。p5goのコードをWeb上で試すことができます。</p>
+<a href="https://p5go-editor.ryomak.jp/" class="stylish-link" target="_blank">p5go Editor</a>
+<h2>p5goを用いた作品集</h2>
 <div class="art-gallery">
   {arts.map((art) => (
     <a href={`/art/detail/${getArtWasmName(art)}/`} class="artwork-card">
@@ -10,18 +14,24 @@ import { arts, getArtWasmName } from '../../art/data/data'
     </a>
   ))}
 </div>
+</main>
 
 <style>
+  main {
+    padding: 2rem;
+    background-color: #fff;
+    border-radius: 20px;
+  }
   h2 {
-	padding: 0 2rem;
 	font-size: 1.5rem;
 	  padding-top: 24px;
+  }
+  p {
   }
   .art-gallery {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 1rem;
-    padding: 2rem;
   }
 
   .artwork-card {
@@ -56,5 +66,18 @@ import { arts, getArtWasmName } from '../../art/data/data'
     font-size: 0.9rem;
     margin: 0;
     color: #666;
+  }
+
+  .stylish-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    margin: 2rem;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    padding: 2rem;
+    background: #fff;
+    border-radius: 10px;
   }
 </style>

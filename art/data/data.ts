@@ -14,7 +14,12 @@ export const arts: Data[] = [
 		language: "go",
 		name: "move_eye",
 		at: "2024-10-13",
-	}
+	},
+	{
+		language: "go",
+		name: "20250118",
+		at: "2025-01-18",
+	},
 ];
 
 export function getArtWasm(a: Data) {
