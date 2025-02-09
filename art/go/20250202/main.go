@@ -33,7 +33,7 @@ type Wave struct {
 
 func setup(c *p5go.Canvas) {
 	// キャンバスサイズ 500x400
-	c.CreateCanvas(500, 400)
+	c.CreateCanvas(400, 400)
 
 	// Webカメラ映像の取得
 	video = c.CreateCapture("VIDEO")
