@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"time"
 
 	"github.com/ryomak/p5go"
 )
@@ -15,56 +14,61 @@ var (
 	frameCount int
 	pixelSize  = 4
 
-	// Space shooter variables
-	stars     []Star
-	spaceShip SpaceShip
-	lasers    []Laser
-	invaders  []Invader
-	score     int
+	// Battle scene variables
+	playerMonster   BattleMonster
+	enemyMonster    BattleMonster
+	battleState     string
+	selectedAction  int
+	battleAnimation BattleAnimation
+	particles       []Particle
+	shakeOffset     float64
+	textAnimation   TextAnimation
 
-	// Dungeon variables
-	hero     Hero
-	monsters []Monster
-	gems     []Gem
-	dungeon  [][]int
-	gridSize = 20
+	// Background effects
+	backgroundGradient []color
+	groundTiles        [][]int
 )
 
-type Star struct {
-	x, y  float64
-	speed float64
-	size  float64
+type BattleMonster struct {
+	name       string
+	monsterType int
+	x, y       float64
+	hp, maxHP  int
+	attack     int
+	defense    int
+	animOffset float64
+	color      struct{ r, g, b uint8 }
+	isPlayer   bool
 }
 
-type SpaceShip struct {
-	x, y float64
+type BattleAnimation struct {
+	animType  string
+	progress  float64
+	targetX   float64
+	targetY   float64
+	duration  int
+	intensity float64
 }
 
-type Laser struct {
-	x, y   float64
-	active bool
+type Particle struct {
+	x, y      float64
+	vx, vy    float64
+	life      float64
+	color     struct{ r, g, b, a uint8 }
+	size      float64
+	particleType string
 }
 
-type Invader struct {
-	x, y    float64
-	active  bool
-	invType int
+type TextAnimation struct {
+	text     string
+	x, y     float64
+	progress float64
+	fadeOut  bool
+	color    struct{ r, g, b uint8 }
 }
 
-type Hero struct {
-	x, y int
-	hp   int
-}
-
-type Monster struct {
-	x, y   int
-	mType  int
-	active bool
-}
-
-type Gem struct {
-	x, y      int
-	collected bool
+type color struct {
+	r, g, b uint8
 }
 
 func main() {
@@ -81,550 +85,937 @@ func setup(canvas *p5go.Canvas) {
 	p.CreateCanvas(600, 600)
 	p.FrameRate(30)
 
-	rand.Seed(time.Now().UnixNano())
-	gameMode = 0
-
-	initSpaceGame()
-	initDungeonGame()
+	initBattleScene()
 }
 
 func draw(canvas *p5go.Canvas) {
 	p = canvas
 	frameCount++
 
-	// Switch between game modes every 300 frames
-	if frameCount%300 == 0 {
-		gameMode = (gameMode + 1) % 3
-	}
-
-	switch gameMode {
-	case 0:
-		drawSpaceShooter()
-	case 1:
-		drawDungeon()
-	case 2:
-		drawRacing()
-	}
+	drawBattleScene()
 }
 
 func mousePressed(canvas *p5go.Canvas) {
 	p = canvas
-	gameMode = (gameMode + 1) % 3
-}
-
-// Space Shooter Game
-func initSpaceGame() {
-	stars = make([]Star, 30)
-	for i := range stars {
-		stars[i] = Star{
-			x:     rand.Float64() * 600,
-			y:     rand.Float64() * 600,
-			speed: rand.Float64()*2 + 0.5,
-			size:  rand.Float64()*2 + 1,
-		}
-	}
-
-	spaceShip = SpaceShip{x: 300, y: 500}
-	lasers = make([]Laser, 0)
-	invaders = make([]Invader, 0)
-
-	// Create invaders
-	for i := 0; i < 5; i++ {
-		for j := 0; j < 3; j++ {
-			invaders = append(invaders, Invader{
-				x:       float64(100 + i*80),
-				y:       float64(50 + j*50),
-				active:  true,
-				invType: j,
-			})
-		}
+	
+	// Handle battle menu selection
+	if battleState == "menu" {
+		selectedAction = (selectedAction + 1) % 4
+	} else if battleState == "idle" {
+		// Start attack animation
+		startAttackAnimation()
 	}
 }
 
-func drawSpaceShooter() {
-	// Space background
-	p.Background(10, 5, 20)
+func initBattleScene() {
+	// Initialize monsters
+	monsterNames := []string{"Pyrodon", "Aquafly", "Leafox", "Thunderat", "Crystaleon"}
+	monsterColors := []struct{ r, g, b uint8 }{
+		{255, 100, 50},  // Fire - red/orange
+		{50, 150, 255},  // Water - blue
+		{100, 255, 100}, // Grass - green
+		{255, 255, 50},  // Electric - yellow
+		{200, 100, 255}, // Psychic - purple
+	}
+	
+	playerType := rand.Intn(5)
+	playerMonster = BattleMonster{
+		name:        monsterNames[playerType],
+		monsterType: playerType,
+		x:           150,
+		y:           350,
+		hp:          100,
+		maxHP:       100,
+		attack:      45,
+		defense:     40,
+		color:       monsterColors[playerType],
+		isPlayer:    true,
+	}
+	
+	enemyType := rand.Intn(5)
+	enemyMonster = BattleMonster{
+		name:        monsterNames[enemyType],
+		monsterType: enemyType,
+		x:           450,
+		y:           200,
+		hp:          100,
+		maxHP:       100,
+		attack:      40,
+		defense:     35,
+		color:       monsterColors[enemyType],
+		isPlayer:    false,
+	}
+	
+	battleState = "idle"
+	selectedAction = 0
+	particles = make([]Particle, 0)
+	
+	// Initialize background
+	initBackground()
+}
 
-	// Draw stars
-	for i := range stars {
-		stars[i].y += stars[i].speed
-		if stars[i].y > 600 {
-			stars[i].y = 0
-			stars[i].x = rand.Float64() * 600
+func initBackground() {
+	// Create gradient colors for sky
+	backgroundGradient = make([]color, 10)
+	for i := range backgroundGradient {
+		t := float64(i) / 9.0
+		backgroundGradient[i] = color{
+			r: uint8(120 + t*60),
+			g: uint8(150 + t*50),
+			b: uint8(200 - t*50),
 		}
+	}
+	
+	// Create ground pattern
+	groundTiles = make([][]int, 10)
+	for i := range groundTiles {
+		groundTiles[i] = make([]int, 20)
+		for j := range groundTiles[i] {
+			groundTiles[i][j] = rand.Intn(3)
+		}
+	}
+}
 
-		brightness := uint8(stars[i].size * 100)
-		p.Fill(brightness, brightness, brightness+50, 255)
+func drawBattleScene() {
+	// Draw gradient background
+	drawBattleBackground()
+	
+	// Update animations
+	updateAnimations()
+	
+	// Update and draw particles
+	updateParticles()
+	
+	// Draw ground/platform
+	drawBattlePlatform()
+	
+	// Draw monsters with animation
+	drawMonster(playerMonster, true)
+	drawMonster(enemyMonster, false)
+	
+	// Draw battle effects
+	if battleAnimation.animType != "" {
+		drawBattleEffect()
+	}
+	
+	// Draw UI
+	drawBattleUI()
+	
+	// Draw text animation
+	if textAnimation.text != "" {
+		drawTextAnimation()
+	}
+}
+
+func drawBattleBackground() {
+	// Animated gradient background
+	for i := 0; i < 10; i++ {
+		t := float64(i) / 9.0
+		offset := math.Sin(float64(frameCount)*0.01 + t*2) * 10
+		
+		c := backgroundGradient[i]
+		p.Fill(c.r, c.g, c.b, 255)
 		p.NoStroke()
-		p.Rect(stars[i].x, stars[i].y, stars[i].size*float64(pixelSize), stars[i].size*float64(pixelSize))
+		p.Rect(0, float64(i*60)+offset, 600, 60)
 	}
-
-	// Move spaceship
-	spaceShip.x = 300 + math.Sin(float64(frameCount)*0.05)*150
-
-	// Draw spaceship
-	p.Fill(0, 255, 200, 255)
-	p.NoStroke()
-	// Body
-	p.Rect(spaceShip.x-10, spaceShip.y, 20, 30)
-	// Wings
-	p.Triangle(spaceShip.x-20, spaceShip.y+20, spaceShip.x-10, spaceShip.y, spaceShip.x-10, spaceShip.y+20)
-	p.Triangle(spaceShip.x+20, spaceShip.y+20, spaceShip.x+10, spaceShip.y, spaceShip.x+10, spaceShip.y+20)
-	// Cockpit
-	p.Fill(100, 150, 200, 200)
-	p.Rect(spaceShip.x-6, spaceShip.y+5, 12, 8)
-
-	// Auto shoot
-	if frameCount%15 == 0 {
-		lasers = append(lasers, Laser{x: spaceShip.x, y: spaceShip.y, active: true})
-	}
-
-	// Update and draw lasers
-	p.Fill(255, 255, 0, 255)
-	for i := range lasers {
-		if !lasers[i].active {
-			continue
-		}
-		lasers[i].y -= 8
-		p.Rect(lasers[i].x-2, lasers[i].y, 4, 12)
-
-		if lasers[i].y < 0 {
-			lasers[i].active = false
-		}
-
-		// Check collision with invaders
-		for j := range invaders {
-			if invaders[j].active &&
-				math.Abs(lasers[i].x-invaders[j].x) < 20 &&
-				math.Abs(lasers[i].y-invaders[j].y) < 20 {
-				invaders[j].active = false
-				lasers[i].active = false
-				score += 100
-				drawExplosion(invaders[j].x, invaders[j].y)
-			}
-		}
-	}
-
-	// Update and draw invaders
-	for i := range invaders {
-		if !invaders[i].active {
-			continue
-		}
-
-		// Movement pattern
-		invaders[i].x += math.Sin(float64(frameCount)*0.02+float64(i)) * 2
-		invaders[i].y += 0.3
-
-		// Draw based on type
-		switch invaders[i].invType {
-		case 0:
-			p.Fill(255, 100, 100, 255)
-			drawPixelInvader1(invaders[i].x, invaders[i].y)
-		case 1:
-			p.Fill(100, 255, 100, 255)
-			drawPixelInvader2(invaders[i].x, invaders[i].y)
-		case 2:
-			p.Fill(100, 100, 255, 255)
-			drawPixelInvader3(invaders[i].x, invaders[i].y)
-		}
-
-		// Respawn at top
-		if invaders[i].y > 600 {
-			invaders[i].y = -50
-			invaders[i].x = rand.Float64()*500 + 50
-			invaders[i].active = true
-		}
-	}
-
-	// Draw score
-	p.Fill(255, 255, 255, 255)
-	p.TextSize(16)
-	p.Text(fmt.Sprintf("SCORE: %d", score), 10, 30)
 }
 
-func drawPixelInvader1(x, y float64) {
-	// Classic space invader shape
-	p.Rect(x-8, y-8, 16, 4)
-	p.Rect(x-12, y-4, 24, 4)
-	p.Rect(x-16, y, 32, 4)
-	p.Rect(x-12, y+4, 8, 4)
-	p.Rect(x+4, y+4, 8, 4)
+func drawBattlePlatform() {
+	// Draw battle ground with pattern
+	groundY := 380.0
+	
+	// Main platform
+	p.Fill(80, 60, 40, 255)
+	p.NoStroke()
+	p.Rect(0, groundY, 600, 220)
+	
+	// Platform details
+	for i := 0; i < 20; i++ {
+		for j := 0; j < 10; j++ {
+			if groundTiles[j][i] == 1 {
+				p.Fill(100, 80, 60, 200)
+			} else if groundTiles[j][i] == 2 {
+				p.Fill(60, 40, 20, 200)
+			} else {
+				continue
+			}
+			p.Rect(float64(i*30), groundY+float64(j*22), 28, 20)
+		}
+	}
+	
+	// Player platform
+	p.Fill(120, 100, 80, 255)
+	p.Ellipse(playerMonster.x, playerMonster.y+40, 120, 40)
+	
+	// Enemy platform
+	p.Fill(100, 80, 60, 255)
+	p.Ellipse(enemyMonster.x, enemyMonster.y+40, 100, 35)
+}
 
+func drawMonster(monster BattleMonster, isPlayer bool) {
+	x := monster.x + shakeOffset
+	y := monster.y + monster.animOffset
+	
+	if monster.hp <= 0 {
+		return
+	}
+	
+	// Draw based on monster type with detailed pixel art
+	switch monster.monsterType {
+	case 0: // Fire type - Dragon-like
+		drawFireMonster(x, y, monster, isPlayer)
+	case 1: // Water type - Fish-like
+		drawWaterMonster(x, y, monster, isPlayer)
+	case 2: // Grass type - Plant-like
+		drawGrassMonster(x, y, monster, isPlayer)
+	case 3: // Electric type - Mouse-like
+		drawElectricMonster(x, y, monster, isPlayer)
+	case 4: // Psychic type - Floating creature
+		drawPsychicMonster(x, y, monster, isPlayer)
+	}
+}
+
+func drawFireMonster(x, y float64, monster BattleMonster, isPlayer bool) {
+	scale := 1.0
+	if !isPlayer {
+		scale = 0.8
+	}
+	
+	// Body
+	p.Fill(monster.color.r, monster.color.g, monster.color.b, 255)
+	p.NoStroke()
+	p.Ellipse(x, y, 60*scale, 50*scale)
+	
+	// Belly
+	p.Fill(255, 200, 150, 255)
+	p.Ellipse(x, y+5*scale, 40*scale, 35*scale)
+	
+	// Head
+	p.Fill(monster.color.r, monster.color.g, monster.color.b, 255)
+	p.Ellipse(x, y-25*scale, 45*scale, 40*scale)
+	
+	// Spikes on back
+	for i := -2; i <= 2; i++ {
+		spikeX := x + float64(i)*12*scale
+		spikeY := y - 15*scale
+		p.Triangle(
+			spikeX, spikeY,
+			spikeX-4*scale, spikeY+10*scale,
+			spikeX+4*scale, spikeY+10*scale,
+		)
+	}
+	
 	// Eyes
 	p.Fill(255, 255, 255, 255)
-	p.Rect(x-8, y-4, 4, 4)
-	p.Rect(x+4, y-4, 4, 4)
-}
-
-func drawPixelInvader2(x, y float64) {
-	// UFO shape
-	p.Ellipse(x, y, 24, 12)
-	p.Rect(x-8, y-8, 16, 8)
-
-	// Lights
-	if frameCount%20 < 10 {
-		p.Fill(255, 255, 0, 200)
-		p.Ellipse(x-8, y, 4, 4)
-		p.Ellipse(x, y, 4, 4)
-		p.Ellipse(x+8, y, 4, 4)
+	p.Ellipse(x-10*scale, y-25*scale, 12*scale, 14*scale)
+	p.Ellipse(x+10*scale, y-25*scale, 12*scale, 14*scale)
+	
+	p.Fill(0, 0, 0, 255)
+	p.Ellipse(x-8*scale, y-25*scale, 6*scale, 8*scale)
+	p.Ellipse(x+8*scale, y-25*scale, 6*scale, 8*scale)
+	
+	// Fire breath animation
+	if frameCount%30 < 15 {
+		for i := 0; i < 3; i++ {
+			flameX := x + float64(15+i*5)*scale
+			if !isPlayer {
+				flameX = x - float64(15+i*5)*scale
+			}
+			flameY := y - 20*scale + math.Sin(float64(frameCount+i*10)*0.3)*3
+			
+			p.Fill(255, uint8(200-i*30), 0, uint8(200-i*40))
+			p.Ellipse(flameX, flameY, float64(8-i*2)*scale, float64(10-i*2)*scale)
+		}
 	}
-}
-
-func drawPixelInvader3(x, y float64) {
-	// Octopus shape
-
-	// Body
-	p.Rect(x-6, y-6, 12, 12)
-
-	// Tentacles
+	
+	// Tail
+	tailWave := math.Sin(float64(frameCount)*0.1) * 5
 	for i := 0; i < 4; i++ {
-		tentX := x + float64(i-2)*6
-		tentY := y + 6 + math.Sin(float64(frameCount)*0.1+float64(i))*3
-		p.Rect(tentX, tentY, 3, 8)
+		tailX := x - float64(20+i*8)*scale
+		if !isPlayer {
+			tailX = x + float64(20+i*8)*scale
+		}
+		tailY := y + float64(10+i*3)*scale + tailWave*float64(i)/4
+		
+		p.Fill(monster.color.r-uint8(i*10), monster.color.g-uint8(i*10), monster.color.b, 255)
+		p.Ellipse(tailX, tailY, float64(20-i*3)*scale, float64(18-i*3)*scale)
 	}
+	
+	// Flame at tail tip
+	flameX := x - 48*scale
+	if !isPlayer {
+		flameX = x + 48*scale
+	}
+	p.Fill(255, 150, 0, 200)
+	p.Ellipse(flameX, y+20*scale+tailWave, 12*scale, 15*scale)
 }
 
-func drawExplosion(x, y float64) {
-	for i := 0; i < 8; i++ {
-		angle := float64(i) * math.Pi / 4
-		dist := 10.0
-		px := x + math.Cos(angle)*dist
-		py := y + math.Sin(angle)*dist
-
-		p.Fill(255, uint8(200-i*20), 0, 200)
-		p.Rect(px-2, py-2, 4, 4)
+func drawWaterMonster(x, y float64, monster BattleMonster, isPlayer bool) {
+	scale := 1.0
+	if !isPlayer {
+		scale = 0.8
 	}
-}
-
-// Dungeon Game
-func initDungeonGame() {
-	gridSize = 20
-	dungeon = make([][]int, gridSize)
-	for i := range dungeon {
-		dungeon[i] = make([]int, gridSize)
-		for j := range dungeon[i] {
-			if i == 0 || i == gridSize-1 || j == 0 || j == gridSize-1 {
-				dungeon[i][j] = 1 // Wall
-			} else if rand.Float64() < 0.1 {
-				dungeon[i][j] = 1 // Random walls
-			}
-		}
-	}
-
-	hero = Hero{x: 10, y: 10, hp: 5}
-
-	monsters = make([]Monster, 0)
-	for i := 0; i < 5; i++ {
-		monsters = append(monsters, Monster{
-			x:      rand.Intn(gridSize-2) + 1,
-			y:      rand.Intn(gridSize-2) + 1,
-			mType:  rand.Intn(3),
-			active: true,
-		})
-	}
-
-	gems = make([]Gem, 0)
-	for i := 0; i < 3; i++ {
-		gems = append(gems, Gem{
-			x: rand.Intn(gridSize-2) + 1,
-			y: rand.Intn(gridSize-2) + 1,
-		})
-	}
-}
-
-func drawDungeon() {
-	p.Background(20, 15, 30)
-
-	cellSize := 30.0
-
-	// Draw dungeon
-	for i := 0; i < gridSize; i++ {
-		for j := 0; j < gridSize; j++ {
-			x := float64(j) * cellSize
-			y := float64(i) * cellSize
-
-			if dungeon[i][j] == 1 {
-				// Wall
-				p.Fill(60, 50, 70, 255)
-				p.NoStroke()
-				p.Rect(x, y, cellSize, cellSize)
-
-				// Brick pattern
-				p.Stroke(40, 35, 50, 255)
-				p.StrokeWeight(1)
-				if (i+j)%2 == 0 {
-					p.Line(x+cellSize/2, y, x+cellSize/2, y+cellSize)
-				}
-			} else {
-				// Floor
-				p.Fill(30, 25, 35, 255)
-				p.NoStroke()
-				p.Rect(x, y, cellSize, cellSize)
-			}
-		}
-	}
-
-	// Move hero automatically
-	if frameCount%20 == 0 {
-		direction := rand.Intn(4)
-		newX, newY := hero.x, hero.y
-
-		switch direction {
-		case 0:
-			newY--
-		case 1:
-			newY++
-		case 2:
-			newX--
-		case 3:
-			newX++
-		}
-
-		if newX >= 0 && newX < gridSize && newY >= 0 && newY < gridSize {
-			if dungeon[newY][newX] == 0 {
-				hero.x = newX
-				hero.y = newY
-			}
-		}
-	}
-
-	// Draw gems
-	for i := range gems {
-		if gems[i].collected {
-			continue
-		}
-
-		x := float64(gems[i].x)*cellSize + cellSize/2
-		y := float64(gems[i].y)*cellSize + cellSize/2
-
-		// Gem sparkle
-		sparkle := math.Sin(float64(frameCount)*0.1) * 50
-		p.Fill(255, 200+uint8(sparkle), 0, 255)
-		p.NoStroke()
-
-		// Diamond shape
-		p.Triangle(x, y-8, x-6, y, x+6, y)
-		p.Triangle(x, y+8, x-6, y, x+6, y)
-
-		// Check collection
-		if hero.x == gems[i].x && hero.y == gems[i].y {
-			gems[i].collected = true
-			score += 50
-		}
-	}
-
-	// Draw monsters
-	for i := range monsters {
-		if !monsters[i].active {
-			continue
-		}
-
-		// Move monsters
-		if frameCount%30 == 0 {
-			direction := rand.Intn(4)
-			newX, newY := monsters[i].x, monsters[i].y
-
-			switch direction {
-			case 0:
-				newY--
-			case 1:
-				newY++
-			case 2:
-				newX--
-			case 3:
-				newX++
-			}
-
-			if newX >= 0 && newX < gridSize && newY >= 0 && newY < gridSize {
-				if dungeon[newY][newX] == 0 {
-					monsters[i].x = newX
-					monsters[i].y = newY
-				}
-			}
-		}
-
-		x := float64(monsters[i].x)*cellSize + cellSize/2
-		y := float64(monsters[i].y)*cellSize + cellSize/2
-
-		// Draw based on type
-		switch monsters[i].mType {
-		case 0: // Slime
-			p.Fill(100, 255, 100, 200)
-			bounce := math.Sin(float64(frameCount)*0.15) * 2
-			p.Ellipse(x, y+bounce, 20, 15)
-
-			// Eyes
-			p.Fill(0, 0, 0, 255)
-			p.Rect(x-5, y-2+bounce, 3, 3)
-			p.Rect(x+2, y-2+bounce, 3, 3)
-
-		case 1: // Ghost
-			p.Fill(200, 200, 255, 150)
-			float := math.Sin(float64(frameCount)*0.1) * 3
-			p.Ellipse(x, y+float, 18, 20)
-
-			// Wavy bottom
-			for j := 0; j < 3; j++ {
-				p.Ellipse(x+float64(j-1)*6, y+10+float, 6, 8)
-			}
-
-			// Eyes
-			p.Fill(255, 0, 0, 255)
-			p.Ellipse(x-4, y-2+float, 3, 3)
-			p.Ellipse(x+4, y-2+float, 3, 3)
-
-		case 2: // Bat
-			p.Fill(100, 50, 150, 255)
-			wingFlap := math.Sin(float64(frameCount)*0.3) * 5
-
-			// Body
-			p.Ellipse(x, y, 10, 8)
-
-			// Wings
-			p.Triangle(x-5, y, x-15-wingFlap, y-5, x-15-wingFlap, y+5)
-			p.Triangle(x+5, y, x+15+wingFlap, y-5, x+15+wingFlap, y+5)
-		}
-
-		// Check collision with hero
-		if monsters[i].x == hero.x && monsters[i].y == hero.y {
-			monsters[i].active = false
-			drawExplosion(x, y)
-		}
-	}
-
-	// Draw hero
-	x := float64(hero.x)*cellSize + cellSize/2
-	y := float64(hero.y)*cellSize + cellSize/2
-
-	// Hero sprite
-	p.Fill(100, 150, 255, 255)
+	
+	// Swimming animation
+	swim := math.Sin(float64(frameCount)*0.15) * 3
+	
+	// Body
+	p.Fill(monster.color.r, monster.color.g, monster.color.b, 255)
 	p.NoStroke()
-	p.Rect(x-6, y-6, 12, 12)
-
-	// Sword
-	p.Fill(200, 200, 200, 255)
-	swordAngle := float64(frameCount) * 0.1
-	swordX := x + math.Cos(swordAngle)*10
-	swordY := y + math.Sin(swordAngle)*10
-	p.Rect(swordX-1, swordY-8, 2, 16)
-
-	// UI
+	p.Ellipse(x, y+swim, 55*scale, 45*scale)
+	
+	// Fins
+	finFlap := math.Sin(float64(frameCount)*0.2) * 10
+	
+	// Side fins
+	p.Fill(monster.color.r-30, monster.color.g-30, monster.color.b, 200)
+	p.Triangle(
+		x-25*scale, y+swim,
+		x-40*scale-finFlap*scale, y-5*scale+swim,
+		x-40*scale-finFlap*scale, y+15*scale+swim,
+	)
+	p.Triangle(
+		x+25*scale, y+swim,
+		x+40*scale+finFlap*scale, y-5*scale+swim,
+		x+40*scale+finFlap*scale, y+15*scale+swim,
+	)
+	
+	// Dorsal fin
+	p.Triangle(
+		x, y-22*scale+swim,
+		x-8*scale, y-10*scale+swim,
+		x+8*scale, y-10*scale+swim,
+	)
+	
+	// Head
+	p.Fill(monster.color.r, monster.color.g, monster.color.b, 255)
+	p.Ellipse(x, y-15*scale+swim, 40*scale, 35*scale)
+	
+	// Eyes
 	p.Fill(255, 255, 255, 255)
-	p.TextSize(14)
-	p.Text(fmt.Sprintf("HP: %d  GEMS: %d", hero.hp, score), 10, 580)
+	p.Ellipse(x-10*scale, y-15*scale+swim, 10*scale, 12*scale)
+	p.Ellipse(x+10*scale, y-15*scale+swim, 10*scale, 12*scale)
+	
+	p.Fill(0, 0, 0, 255)
+	p.Ellipse(x-8*scale, y-15*scale+swim, 5*scale, 6*scale)
+	p.Ellipse(x+8*scale, y-15*scale+swim, 5*scale, 6*scale)
+	
+	// Bubbles
+	for i := 0; i < 3; i++ {
+		bubbleY := y - 30*scale - float64(i*15)*scale - float64(frameCount%60)
+		bubbleX := x + math.Sin(float64(frameCount+i*30)*0.05)*10*scale
+		
+		if bubbleY > y-80*scale {
+			p.Fill(200, 220, 255, 150)
+			p.Ellipse(bubbleX, bubbleY, float64(5+i)*scale, float64(5+i)*scale)
+		}
+	}
+	
+	// Tail
+	tailX := x - 30*scale
+	if !isPlayer {
+		tailX = x + 30*scale
+	}
+	p.Fill(monster.color.r-20, monster.color.g-20, monster.color.b, 255)
+	p.Triangle(
+		tailX, y+5*scale+swim,
+		tailX-15*scale-finFlap*0.5*scale, y-5*scale+swim,
+		tailX-15*scale-finFlap*0.5*scale, y+15*scale+swim,
+	)
 }
 
-// Racing Game
-func drawRacing() {
-	// Sky gradient
-	for i := 0; i < 100; i++ {
-		p.Fill(uint8(10+i/2), uint8(5+i/3), uint8(30+i), 255)
-		p.NoStroke()
-		p.Rect(0, float64(i*6), 600, 6)
+func drawGrassMonster(x, y float64, monster BattleMonster, isPlayer bool) {
+	scale := 1.0
+	if !isPlayer {
+		scale = 0.8
 	}
-
-	// Road
-	roadWidth := 300.0
-	roadX := 150.0
-
-	p.Fill(40, 40, 45, 255)
-	p.Rect(roadX, 0, roadWidth, 600)
-
-	// Road lines
-	p.Stroke(255, 255, 100, 200)
-	p.StrokeWeight(2)
-	offset := float64(frameCount * 5 % 60)
-	for y := -60.0; y < 600; y += 60 {
-		p.Line(roadX+100, y+offset, roadX+100, y+offset+30)
-		p.Line(roadX+200, y+offset, roadX+200, y+offset+30)
-	}
-
-	// Side buildings
-	for i := 0; i < 10; i++ {
-		buildingY := float64(i*60) - offset
-
-		// Left buildings
-		p.Fill(20, 20, 30, 255)
-		p.NoStroke()
-		p.Rect(20, buildingY, 80, 50)
-
-		// Windows
-		if frameCount%40 < 30 {
-			p.Fill(255, 200, 100, 150)
-			for w := 0; w < 3; w++ {
-				for h := 0; h < 2; h++ {
-					p.Rect(30+float64(w)*20, buildingY+10+float64(h)*20, 10, 10)
-				}
-			}
-		}
-
-		// Right buildings
-		p.Fill(30, 20, 40, 255)
-		p.Rect(500, buildingY+20, 80, 50)
-
-		// Windows
-		if frameCount%50 < 35 {
-			p.Fill(100, 200, 255, 150)
-			for w := 0; w < 3; w++ {
-				for h := 0; h < 2; h++ {
-					p.Rect(510+float64(w)*20, buildingY+30+float64(h)*20, 10, 10)
-				}
-			}
-		}
-	}
-
-	// Car position
-	carX := 300.0 + math.Sin(float64(frameCount)*0.05)*70
-	carY := 450.0
-
-	// Draw car
-	p.Fill(255, 50, 50, 255)
+	
+	// Bulb body
+	p.Fill(monster.color.r, monster.color.g, monster.color.b, 255)
 	p.NoStroke()
+	p.Ellipse(x, y, 50*scale, 40*scale)
+	
+	// Spots on body
+	p.Fill(monster.color.r-30, monster.color.g-30, monster.color.b-30, 200)
+	p.Ellipse(x-10*scale, y, 8*scale, 8*scale)
+	p.Ellipse(x+8*scale, y+5*scale, 6*scale, 6*scale)
+	p.Ellipse(x, y-8*scale, 7*scale, 7*scale)
+	
+	// Head
+	p.Fill(monster.color.r+20, monster.color.g, monster.color.b+20, 255)
+	p.Ellipse(x, y-20*scale, 35*scale, 30*scale)
+	
+	// Leaves on back - animated
+	leafWave := math.Sin(float64(frameCount)*0.08) * 5
+	for i := -1; i <= 1; i++ {
+		leafX := x + float64(i)*15*scale
+		leafY := y - 25*scale
+		
+		p.Fill(50, 200, 50, 255)
+		p.Push()
+		p.Translate(leafX, leafY)
+		p.Rotate(float64(i)*0.3 + leafWave*0.02)
+		
+		// Leaf shape
+		p.Ellipse(0, -10*scale, 8*scale, 20*scale)
+		
+		p.Pop()
+	}
+	
+	// Flower on top
+	flowerY := y - 40*scale + math.Sin(float64(frameCount)*0.1)*2
+	
+	// Petals
+	for i := 0; i < 5; i++ {
+		angle := float64(i) * 2 * math.Pi / 5
+		petalX := x + math.Cos(angle)*12*scale
+		petalY := flowerY + math.Sin(angle)*12*scale
+		
+		p.Fill(255, 150, 200, 255)
+		p.Ellipse(petalX, petalY, 10*scale, 10*scale)
+	}
+	
+	// Flower center
+	p.Fill(255, 200, 50, 255)
+	p.Ellipse(x, flowerY, 8*scale, 8*scale)
+	
+	// Eyes
+	p.Fill(255, 255, 255, 255)
+	p.Ellipse(x-8*scale, y-20*scale, 10*scale, 12*scale)
+	p.Ellipse(x+8*scale, y-20*scale, 10*scale, 12*scale)
+	
+	p.Fill(0, 0, 0, 255)
+	p.Ellipse(x-6*scale, y-20*scale, 4*scale, 5*scale)
+	p.Ellipse(x+6*scale, y-20*scale, 4*scale, 5*scale)
+	
+	// Vines/roots
+	for i := -2; i <= 2; i++ {
+		if i == 0 {
+			continue
+		}
+		vineX := x + float64(i)*12*scale
+		vineY := y + 20*scale
+		
+		p.Stroke(50, 150, 50, 200)
+		p.StrokeWeight(3 * scale)
+		p.Line(vineX, vineY, vineX+float64(i)*5*scale, vineY+15*scale)
+		p.NoStroke()
+	}
+}
 
-	// Car body
-	p.Rect(carX-15, carY-10, 30, 40)
-
-	// Windshield
-	p.Fill(100, 150, 200, 200)
-	p.Rect(carX-10, carY-5, 20, 12)
-
-	// Wheels
-	p.Fill(30, 30, 30, 255)
-	p.Rect(carX-18, carY, 5, 10)
-	p.Rect(carX+13, carY, 5, 10)
-	p.Rect(carX-18, carY+20, 5, 10)
-	p.Rect(carX+13, carY+20, 5, 10)
-
-	// Headlights
+func drawElectricMonster(x, y float64, monster BattleMonster, isPlayer bool) {
+	scale := 1.0
+	if !isPlayer {
+		scale = 0.8
+	}
+	
+	// Static electricity effect
+	staticOffset := math.Sin(float64(frameCount)*0.3) * 2
+	
+	// Body
+	p.Fill(monster.color.r, monster.color.g, monster.color.b, 255)
+	p.NoStroke()
+	p.Ellipse(x, y+staticOffset, 45*scale, 40*scale)
+	
+	// Lightning bolt pattern on body
+	p.Fill(255, 255, 100, 255)
+	p.Push()
+	p.Translate(x, y+staticOffset)
+	
+	// Draw zigzag pattern
+	points := [][]float64{
+		{0, -15}, {-5, -8}, {3, -5}, {-2, 0}, {5, 3}, {0, 8},
+	}
+	for i := 0; i < len(points)-1; i++ {
+		p.StrokeWeight(3 * scale)
+		p.Stroke(255, 255, 150, 255)
+		p.Line(
+			points[i][0]*scale, points[i][1]*scale,
+			points[i+1][0]*scale, points[i+1][1]*scale,
+		)
+	}
+	p.Pop()
+	p.NoStroke()
+	
+	// Head with pointed ears
+	p.Fill(monster.color.r, monster.color.g, monster.color.b, 255)
+	p.Ellipse(x, y-20*scale+staticOffset, 35*scale, 30*scale)
+	
+	// Ears
+	p.Triangle(
+		x-15*scale, y-25*scale+staticOffset,
+		x-20*scale, y-40*scale+staticOffset,
+		x-10*scale, y-35*scale+staticOffset,
+	)
+	p.Triangle(
+		x+15*scale, y-25*scale+staticOffset,
+		x+20*scale, y-40*scale+staticOffset,
+		x+10*scale, y-35*scale+staticOffset,
+	)
+	
+	// Ear tips (black)
+	p.Fill(0, 0, 0, 255)
+	p.Triangle(
+		x-17*scale, y-35*scale+staticOffset,
+		x-20*scale, y-40*scale+staticOffset,
+		x-14*scale, y-37*scale+staticOffset,
+	)
+	p.Triangle(
+		x+17*scale, y-35*scale+staticOffset,
+		x+20*scale, y-40*scale+staticOffset,
+		x+14*scale, y-37*scale+staticOffset,
+	)
+	
+	// Eyes
+	p.Fill(255, 255, 255, 255)
+	p.Ellipse(x-8*scale, y-20*scale+staticOffset, 10*scale, 12*scale)
+	p.Ellipse(x+8*scale, y-20*scale+staticOffset, 10*scale, 12*scale)
+	
+	p.Fill(0, 0, 0, 255)
+	p.Ellipse(x-6*scale, y-20*scale+staticOffset, 5*scale, 6*scale)
+	p.Ellipse(x+6*scale, y-20*scale+staticOffset, 5*scale, 6*scale)
+	
+	// Cheeks (red electrical pouches)
+	p.Fill(255, 100, 100, 255)
+	p.Ellipse(x-18*scale, y-15*scale+staticOffset, 8*scale, 8*scale)
+	p.Ellipse(x+18*scale, y-15*scale+staticOffset, 8*scale, 8*scale)
+	
+	// Electric sparks around body
 	if frameCount%10 < 5 {
-		p.Fill(255, 255, 200, 200)
-		p.Ellipse(carX-10, carY-12, 5, 5)
-		p.Ellipse(carX+10, carY-12, 5, 5)
+		for i := 0; i < 4; i++ {
+			angle := float64(i) * math.Pi / 2 + float64(frameCount)*0.1
+			sparkX := x + math.Cos(angle)*35*scale
+			sparkY := y + math.Sin(angle)*35*scale + staticOffset
+			
+			p.Fill(255, 255, 0, 200)
+			p.Push()
+			p.Translate(sparkX, sparkY)
+			p.Rotate(angle)
+			
+			// Star-like spark
+			for j := 0; j < 4; j++ {
+				a := float64(j) * math.Pi / 2
+				p.Line(0, 0, math.Cos(a)*8*scale, math.Sin(a)*8*scale)
+			}
+			
+			p.Pop()
+		}
 	}
-
-	// Exhaust
-	for i := 0; i < 3; i++ {
-		alpha := uint8(150 - i*40)
-		p.Fill(150, 150, 150, alpha)
-		p.Ellipse(carX, carY+35+float64(i)*5, float64(5+i*2), float64(5+i*2))
+	
+	// Tail (lightning bolt shaped)
+	tailX := x - 25*scale
+	if !isPlayer {
+		tailX = x + 25*scale
 	}
+	
+	p.Fill(monster.color.r-20, monster.color.g-20, monster.color.b-20, 255)
+	p.Push()
+	p.Translate(tailX, y+10*scale+staticOffset)
+	
+	// Lightning tail shape
+	p.BeginShape()
+	p.Vertex(0, 0)
+	p.Vertex(-10*scale, -5*scale)
+	p.Vertex(-8*scale, 0)
+	p.Vertex(-15*scale, 5*scale)
+	p.Vertex(-12*scale, 10*scale)
+	p.Vertex(-5*scale, 8*scale)
+	p.Vertex(0, 15*scale)
+	p.EndShape()
+	
+	p.Pop()
+}
 
-	// Speed lines
-	p.Stroke(255, 255, 255, 100)
-	p.StrokeWeight(1)
+func drawPsychicMonster(x, y float64, monster BattleMonster, isPlayer bool) {
+	scale := 1.0
+	if !isPlayer {
+		scale = 0.8
+	}
+	
+	// Floating animation
+	float := math.Sin(float64(frameCount)*0.1) * 5
+	rotation := math.Sin(float64(frameCount)*0.05) * 0.1
+	
+	y += float
+	
+	// Psychic aura
+	for i := 3; i > 0; i-- {
+		alpha := uint8(50 - i*10)
+		size := float64(60+i*10) * scale
+		
+		p.Fill(200, 150, 255, alpha)
+		p.NoStroke()
+		p.Ellipse(x, y, size, size)
+	}
+	
+	// Body
+	p.Push()
+	p.Translate(x, y)
+	p.Rotate(rotation)
+	
+	p.Fill(monster.color.r, monster.color.g, monster.color.b, 255)
+	p.Ellipse(0, 0, 45*scale, 50*scale)
+	
+	// Gem on forehead
+	p.Fill(255, 100, 200, 255)
+	p.Ellipse(0, -20*scale, 10*scale, 10*scale)
+	p.Fill(255, 200, 250, 200)
+	p.Ellipse(0, -20*scale, 6*scale, 6*scale)
+	
+	// Eyes (large and mysterious)
+	p.Fill(255, 255, 255, 255)
+	p.Ellipse(-10*scale, -5*scale, 14*scale, 16*scale)
+	p.Ellipse(10*scale, -5*scale, 14*scale, 16*scale)
+	
+	// Psychic eyes effect
+	eyeGlow := math.Sin(float64(frameCount)*0.2) * 50
+	p.Fill(150, 100, 200, uint8(150+eyeGlow))
+	p.Ellipse(-10*scale, -5*scale, 8*scale, 10*scale)
+	p.Ellipse(10*scale, -5*scale, 8*scale, 10*scale)
+	
+	p.Fill(0, 0, 0, 255)
+	p.Ellipse(-10*scale, -5*scale, 4*scale, 5*scale)
+	p.Ellipse(10*scale, -5*scale, 4*scale, 5*scale)
+	
+	// Tail or tentacles
+	for i := -1; i <= 1; i++ {
+		tentacleX := float64(i) * 20 * scale
+		tentacleY := 25 * scale
+		
+		wave := math.Sin(float64(frameCount)*0.15+float64(i)) * 5
+		
+		p.Fill(monster.color.r-30, monster.color.g-30, monster.color.b-30, 200)
+		
+		for j := 0; j < 3; j++ {
+			segX := tentacleX + wave*float64(j)/3
+			segY := tentacleY + float64(j)*10*scale
+			segSize := (10 - float64(j)*2) * scale
+			
+			p.Ellipse(segX, segY, segSize, segSize)
+		}
+	}
+	
+	p.Pop()
+	
+	// Psychic particles orbiting
+	for i := 0; i < 6; i++ {
+		angle := float64(i)*math.Pi/3 + float64(frameCount)*0.05
+		orbitRadius := 40 * scale
+		particleX := x + math.Cos(angle)*orbitRadius
+		particleY := y + math.Sin(angle)*orbitRadius
+		
+		p.Fill(255, 200, 255, 150)
+		p.Ellipse(particleX, particleY, 5*scale, 5*scale)
+	}
+}
+
+func updateAnimations() {
+	// Update monster idle animations
+	playerMonster.animOffset = math.Sin(float64(frameCount)*0.1) * 3
+	enemyMonster.animOffset = math.Sin(float64(frameCount)*0.1+math.Pi) * 3
+	
+	// Update battle animation
+	if battleAnimation.animType != "" {
+		battleAnimation.progress += 1.0 / float64(battleAnimation.duration)
+		
+		if battleAnimation.animType == "attack" {
+			if battleAnimation.progress < 0.5 {
+				// Move towards target
+				shakeOffset = math.Sin(battleAnimation.progress*math.Pi*4) * 5
+			} else {
+				// Impact and shake
+				shakeOffset = math.Sin(battleAnimation.progress*math.Pi*8) * (1 - battleAnimation.progress) * 10
+				
+				// Create impact particles
+				if int(battleAnimation.progress*float64(battleAnimation.duration))%3 == 0 {
+					for i := 0; i < 5; i++ {
+						angle := rand.Float64() * math.Pi * 2
+						speed := rand.Float64()*5 + 2
+						
+						particles = append(particles, Particle{
+							x:    battleAnimation.targetX,
+							y:    battleAnimation.targetY,
+							vx:   math.Cos(angle) * speed,
+							vy:   math.Sin(angle) * speed,
+							life: 1.0,
+							color: struct{ r, g, b, a uint8 }{
+								r: uint8(rand.Intn(55) + 200),
+								g: uint8(rand.Intn(55) + 200),
+								b: 100,
+								a: 255,
+							},
+							size:         rand.Float64()*3 + 2,
+							particleType: "impact",
+						})
+					}
+				}
+			}
+		}
+		
+		if battleAnimation.progress >= 1.0 {
+			battleAnimation.animType = ""
+			shakeOffset = 0
+		}
+	}
+	
+	// Update text animation
+	if textAnimation.text != "" {
+		textAnimation.progress += 0.02
+		
+		if textAnimation.fadeOut && textAnimation.progress > 1.0 {
+			textAnimation.text = ""
+		}
+	}
+}
+
+func updateParticles() {
+	for i := len(particles) - 1; i >= 0; i-- {
+		p := &particles[i]
+		
+		// Update position
+		p.x += p.vx
+		p.y += p.vy
+		
+		// Apply gravity for some particles
+		if p.particleType == "impact" {
+			p.vy += 0.3
+		}
+		
+		// Fade out
+		p.life -= 0.02
+		
+		// Remove dead particles
+		if p.life <= 0 {
+			particles = append(particles[:i], particles[i+1:]...)
+		}
+	}
+	
+	// Draw particles
+	for _, particle := range particles {
+		alpha := uint8(particle.life * float64(particle.color.a))
+		p.Fill(particle.color.r, particle.color.g, particle.color.b, alpha)
+		p.NoStroke()
+		
+		if particle.particleType == "star" {
+			// Draw star shape
+			drawStar(particle.x, particle.y, particle.size)
+		} else {
+			// Draw circle
+			p.Ellipse(particle.x, particle.y, particle.size, particle.size)
+		}
+	}
+}
+
+func drawStar(x, y, size float64) {
+	p.Push()
+	p.Translate(x, y)
+	
 	for i := 0; i < 5; i++ {
-		lineY := rand.Float64()*200 + 300
-		p.Line(0, lineY, 600, lineY)
+		angle := float64(i) * 2 * math.Pi / 5 - math.Pi/2
+		x1 := math.Cos(angle) * size
+		y1 := math.Sin(angle) * size
+		
+		angle2 := angle + math.Pi/5
+		x2 := math.Cos(angle2) * size * 0.5
+		y2 := math.Sin(angle2) * size * 0.5
+		
+		p.Triangle(0, 0, x1, y1, x2, y2)
 	}
+	
+	p.Pop()
+}
 
-	// UI
-	p.Fill(0, 0, 0, 180)
+func drawBattleEffect() {
+	if battleAnimation.animType == "attack" {
+		// Draw slash effect
+		if battleAnimation.progress > 0.3 && battleAnimation.progress < 0.7 {
+			alpha := uint8((0.7 - battleAnimation.progress) * 500)
+			
+			for i := 0; i < 3; i++ {
+				offsetX := float64(i-1) * 15
+				offsetY := float64(i-1) * 10
+				
+				p.Stroke(255, 255, 255, alpha-uint8(i*30))
+				p.StrokeWeight(float64(5 - i))
+				
+				p.Line(
+					battleAnimation.targetX-30+offsetX,
+					battleAnimation.targetY-30+offsetY,
+					battleAnimation.targetX+30+offsetX,
+					battleAnimation.targetY+30+offsetY,
+				)
+			}
+			p.NoStroke()
+		}
+	}
+}
+
+func drawBattleUI() {
+	// Player HP bar
+	drawHPBar(80, 500, playerMonster, true)
+	
+	// Enemy HP bar
+	drawHPBar(400, 100, enemyMonster, false)
+	
+	// Battle menu
+	if battleState == "menu" {
+		drawBattleMenu()
+	}
+}
+
+func drawHPBar(x, y float64, monster BattleMonster, isPlayer bool) {
+	// Background
+	p.Fill(0, 0, 0, 200)
 	p.NoStroke()
-	p.Rect(10, 10, 150, 60)
-
+	p.Rect(x-5, y-5, 160, 70)
+	
+	// Name
 	p.Fill(255, 255, 255, 255)
 	p.TextSize(14)
-	speed := int(math.Abs(math.Sin(float64(frameCount)*0.02)) * 200)
-	p.Text(fmt.Sprintf("SPEED: %d km/h", speed), 20, 35)
-	p.Text(fmt.Sprintf("SCORE: %d", score), 20, 55)
+	p.Text(monster.name, x+5, y+15)
+	
+	// Level indicator
+	p.Fill(200, 200, 200, 255)
+	p.Text("Lv.25", x+110, y+15)
+	
+	// HP text
+	p.TextSize(10)
+	p.Text("HP", x+5, y+35)
+	
+	// HP bar background
+	p.Fill(50, 50, 50, 255)
+	p.Rect(x+25, y+25, 120, 12)
+	
+	// HP bar fill
+	hpPercent := float64(monster.hp) / float64(monster.maxHP)
+	hpColor := struct{ r, g, b uint8 }{100, 255, 100}
+	
+	if hpPercent < 0.5 {
+		hpColor = struct{ r, g, b uint8 }{255, 200, 0}
+	}
+	if hpPercent < 0.25 {
+		hpColor = struct{ r, g, b uint8 }{255, 100, 100}
+	}
+	
+	p.Fill(hpColor.r, hpColor.g, hpColor.b, 255)
+	p.Rect(x+25, y+25, 120*hpPercent, 12)
+	
+	// HP numbers
+	if isPlayer {
+		p.Fill(255, 255, 255, 255)
+		p.TextSize(10)
+		p.Text(fmt.Sprintf("%d/%d", monster.hp, monster.maxHP), x+60, y+50)
+	}
+	
+	// Experience bar for player
+	if isPlayer {
+		p.Fill(50, 50, 50, 255)
+		p.Rect(x+25, y+45, 120, 4)
+		
+		p.Fill(100, 150, 255, 255)
+		p.Rect(x+25, y+45, 80, 4)
+	}
+}
+
+func drawBattleMenu() {
+	// Menu background
+	p.Fill(0, 0, 0, 220)
+	p.NoStroke()
+	p.Rect(300, 450, 280, 130)
+	
+	// Menu options
+	options := []string{"FIGHT", "POKEMON", "BAG", "RUN"}
+	positions := [][]float64{
+		{330, 480}, {450, 480},
+		{330, 530}, {450, 530},
+	}
+	
+	for i, option := range options {
+		x := positions[i][0]
+		y := positions[i][1]
+		
+		// Highlight selected option
+		if i == selectedAction {
+			p.Fill(255, 200, 0, 100)
+			p.Rect(x-20, y-20, 100, 35)
+			
+			// Animated cursor
+			cursorX := x - 30 + math.Sin(float64(frameCount)*0.2)*3
+			p.Fill(255, 255, 0, 255)
+			p.Triangle(
+				cursorX, y-5,
+				cursorX-8, y-10,
+				cursorX-8, y,
+			)
+		}
+		
+		p.Fill(255, 255, 255, 255)
+		p.TextSize(16)
+		p.Text(option, x, y)
+	}
+	
+	// Info text
+	p.Fill(200, 200, 200, 255)
+	p.TextSize(12)
+	p.Text("What will " + playerMonster.name + " do?", 320, 570)
+}
+
+func drawTextAnimation() {
+	y := textAnimation.y
+	
+	if !textAnimation.fadeOut {
+		y -= textAnimation.progress * 20
+	}
+	
+	alpha := uint8(255)
+	if textAnimation.fadeOut {
+		alpha = uint8(255 * (1 - textAnimation.progress))
+	}
+	
+	// Text shadow
+	p.Fill(0, 0, 0, alpha/2)
+	p.TextSize(20)
+	p.Text(textAnimation.text, textAnimation.x+2, y+2)
+	
+	// Main text
+	p.Fill(textAnimation.color.r, textAnimation.color.g, textAnimation.color.b, alpha)
+	p.Text(textAnimation.text, textAnimation.x, y)
+}
+
+func startAttackAnimation() {
+	battleAnimation = BattleAnimation{
+		animType:  "attack",
+		progress:  0,
+		targetX:   enemyMonster.x,
+		targetY:   enemyMonster.y,
+		duration:  60,
+		intensity: 1.0,
+	}
+	
+	// Damage calculation
+	damage := playerMonster.attack - enemyMonster.defense/2
+	if damage < 1 {
+		damage = 1
+	}
+	
+	enemyMonster.hp -= damage
+	if enemyMonster.hp < 0 {
+		enemyMonster.hp = 0
+	}
+	
+	// Show damage text
+	textAnimation = TextAnimation{
+		text:    fmt.Sprintf("-%d", damage),
+		x:       enemyMonster.x - 10,
+		y:       enemyMonster.y - 30,
+		progress: 0,
+		fadeOut: true,
+		color:   struct{ r, g, b uint8 }{255, 100, 100},
+	}
+	
+	// Enemy counter attack after delay
+	if enemyMonster.hp > 0 {
+		// Simplified - in real game this would be scheduled
+		battleState = "enemy_turn"
+	}
 }
