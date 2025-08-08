@@ -35,6 +35,16 @@ export const arts: Data[] = [
 		name: "20250209",
 		at: "2025-02-09",
 	},
+	{
+		language: "go",
+		name: "retro_game",
+		at: "2025-08-07"
+	},
+	{
+		language: "go",
+		name: "personality_world",
+		at: "2025-08-08"
+	}
 ];
 
 export function getArtWasm(a: Data) {
