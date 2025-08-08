@@ -1,10 +1,1 @@
-{
-  "title": "Go: 独自エラーを整形してSentryに送信する",
-  "published": "2024-04-27",
-  "draft": false,
-  "image": "",
-  "tags": ["zenn"],
-  "category": "Blog",
-  "external": true,
-  "link": "https://zenn.dev/ryomak/articles/go-error-sentry"
-}
+{"title":"Go: 独自エラーを整形してSentryに送信する","published":"2024-04-27","draft":false,"image":"","tags":["zenn"],"category":"Blog","external":true,"link":"https://zenn.dev/ryomak/articles/go-error-sentry"}
