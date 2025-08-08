@@ -47,6 +47,8 @@ type RoomElement struct {
 	color        string
 	hasBackrest  bool // チェア用
 	hasArmrests  bool // チェア用
+	isRare       bool // レアアイテムかどうか
+	rarity       string // "common", "rare", "epic", "legendary"
 }
 
 type PixelEffect struct {
@@ -135,6 +137,9 @@ func generateRoom() {
 	} else {
 		generateArtisticSpace()
 	}
+	
+	// レアアイテムを生成
+	generateRareItems()
 }
 
 func generateOrganizedOffice() {
@@ -460,8 +465,8 @@ func drawScene() {
 }
 
 func drawRoom() {
-	roomX := float64(CANVAS_WIDTH/2)
-	roomY := float64(CANVAS_HEIGHT/2 + 30)
+	roomX := float64(CANVAS_WIDTH/2 + 70)
+	roomY := float64(CANVAS_HEIGHT/2 + 70)
 	
 	drawFloor(roomX, roomY)
 	drawWalls(roomX, roomY)
@@ -513,8 +518,8 @@ func drawFloor(roomX, roomY float64) {
 }
 
 func drawRoomElements() {
-	roomX := float64(CANVAS_WIDTH/2)
-	roomY := float64(CANVAS_HEIGHT/2 + 30)
+	roomX := float64(CANVAS_WIDTH/2 + 70)
+	roomY := float64(CANVAS_HEIGHT/2 + 70)
 	
 	// 深度ソート
 	for i := 0; i < len(roomElements)-1; i++ {
@@ -566,6 +571,20 @@ func drawPixelFurniture(roomX, roomY float64, elem RoomElement) {
 		drawPixelTrophy(roomX, roomY, elem)
 	case "book":
 		drawPixelBook(roomX, roomY, elem)
+	case "diamond":
+		drawPixelDiamond(roomX, roomY, elem)
+	case "crystal":
+		drawPixelCrystal(roomX, roomY, elem)
+	case "goldbar":
+		drawPixelGoldBar(roomX, roomY, elem)
+	case "artifact":
+		drawPixelArtifact(roomX, roomY, elem)
+	case "quantum_computer":
+		drawPixelQuantumComputer(roomX, roomY, elem)
+	case "hologram":
+		drawPixelHologram(roomX, roomY, elem)
+	case "timemachine":
+		drawPixelTimeMachine(roomX, roomY, elem)
 	default:
 		drawPixelBox(roomX, roomY, elem.x, elem.y, elem.z, 
 			elem.width, elem.height, elem.depth, elem.color)
@@ -974,6 +993,270 @@ func drawPixelBook(roomX, roomY float64, elem RoomElement) {
 	p.Fill(bookColor[0], bookColor[1], bookColor[2], 255)
 	drawPixelBox(roomX, roomY, elem.x, elem.y, elem.z,
 		elem.width, elem.height, elem.depth, elem.color)
+}
+
+// レアアイテム生成関数
+func generateRareItems() {
+	// レアリティの確率を計算
+	rareChance := float64(wealthLevel) / 100.0 * 0.3 // 最大0.3
+	epicChance := float64(wealthLevel) / 100.0 * 0.1 // 最大0.1
+	legendaryChance := float64(wealthLevel) / 100.0 * 0.05 // 最大0.05
+	
+	// MBTIタイプによるボーナス
+	if !isSensing { // Nタイプはレアアイテムが出やすい
+		rareChance *= 1.5
+		epicChance *= 1.3
+		legendaryChance *= 1.2
+	}
+	
+	if !isJudging { // Pタイプは意外な発見が多い
+		rareChance *= 1.3
+		epicChance *= 1.5
+		legendaryChance *= 1.8
+	}
+	
+	// レジェンダリーアイテムのチェック
+	if rand.Float64() < legendaryChance {
+		addLegendaryItem()
+	} else if rand.Float64() < epicChance {
+		addEpicItem()
+	} else if rand.Float64() < rareChance {
+		addRareItem()
+	}
+}
+
+func addLegendaryItem() {
+	legendaryItems := []string{"timemachine", "quantum_computer"}
+	item := legendaryItems[rand.Intn(len(legendaryItems))]
+	
+	// 空いてるスペースを探して配置
+	x := 20.0 + rand.Float64()*(ROOM_SIZE-60)
+	z := 20.0 + rand.Float64()*(ROOM_SIZE-60)
+	
+	roomElements = append(roomElements, RoomElement{
+		x: x, y: 0, z: z,
+		width: 25, height: 40, depth: 20,
+		elementType: item,
+		color: "decoration",
+		isRare: true,
+		rarity: "legendary",
+	})
+}
+
+func addEpicItem() {
+	epicItems := []string{"hologram", "crystal", "artifact"}
+	item := epicItems[rand.Intn(len(epicItems))]
+	
+	x := 25.0 + rand.Float64()*(ROOM_SIZE-70)
+	z := 25.0 + rand.Float64()*(ROOM_SIZE-70)
+	
+	size := 15.0 + rand.Float64()*10
+	roomElements = append(roomElements, RoomElement{
+		x: x, y: 0, z: z,
+		width: size, height: size*1.5, depth: size,
+		elementType: item,
+		color: "decoration",
+		isRare: true,
+		rarity: "epic",
+	})
+}
+
+func addRareItem() {
+	rareItems := []string{"diamond", "goldbar"}
+	item := rareItems[rand.Intn(len(rareItems))]
+	
+	x := 30.0 + rand.Float64()*(ROOM_SIZE-80)
+	z := 30.0 + rand.Float64()*(ROOM_SIZE-80)
+	
+	size := 8.0 + rand.Float64()*6
+	roomElements = append(roomElements, RoomElement{
+		x: x, y: 15, z: z, // 高い位置に配置
+		width: size, height: size, depth: size,
+		elementType: item,
+		color: "decoration",
+		isRare: true,
+		rarity: "rare",
+	})
+}
+
+// レアアイテム描画関数
+func drawPixelDiamond(roomX, roomY float64, elem RoomElement) {
+	// キラキラしたダイヤモンド
+	diamondColors := [][3]float64{
+		{255, 255, 255}, // 白
+		{200, 220, 255}, // 青白
+		{255, 240, 245}, // ピンク白
+	}
+	
+	for i, color := range diamondColors {
+		offset := float64(i) * 2
+		p.Fill(color[0], color[1], color[2], 180+i*25)
+		
+		// ダイヤモンドの形（ピラミッド）
+		for px := offset; px < elem.width-offset; px += PIXEL_SIZE {
+			for pz := offset; pz < elem.depth-offset; pz += PIXEL_SIZE {
+				heightRatio := 1.0 - math.Max(math.Abs(px-elem.width/2), math.Abs(pz-elem.depth/2))/(elem.width/2)
+				if heightRatio > 0 {
+					py := elem.height * heightRatio
+					isoX, isoY := toIsometric(elem.x+px, elem.y+py, elem.z+pz)
+					p.Rect(roomX+isoX-ROOM_SIZE/2, roomY+isoY-ROOM_SIZE/2, PIXEL_SIZE, PIXEL_SIZE)
+				}
+			}
+		}
+	}
+}
+
+func drawPixelCrystal(roomX, roomY float64, elem RoomElement) {
+	// 紫のクリスタル
+	crystalColor := [3]float64{147, 0, 211}
+	p.Fill(crystalColor[0], crystalColor[1], crystalColor[2], 200)
+	
+	// クリスタルの形（六角柱）
+	for py := 0.0; py < elem.height; py += PIXEL_SIZE {
+		for angle := 0.0; angle < 360; angle += 60 {
+			rad := angle * math.Pi / 180
+			radius := elem.width/2 * (1.0 - py/elem.height*0.3)
+			px := radius * math.Cos(rad)
+			pz := radius * math.Sin(rad)
+			
+			// 光の反射効果
+			brightness := 0.8 + 0.4*math.Sin(py/5+angle/30)
+			p.Fill(crystalColor[0]*brightness, crystalColor[1]*brightness, crystalColor[2]*brightness, 200)
+			
+			isoX, isoY := toIsometric(elem.x+elem.width/2+px, elem.y+py, elem.z+elem.depth/2+pz)
+			p.Rect(roomX+isoX-ROOM_SIZE/2, roomY+isoY-ROOM_SIZE/2, PIXEL_SIZE*2, PIXEL_SIZE*2)
+		}
+	}
+}
+
+func drawPixelGoldBar(roomX, roomY float64, elem RoomElement) {
+	// 金のインゴット
+	goldColor := [3]float64{255, 215, 0}
+	p.Fill(goldColor[0], goldColor[1], goldColor[2], 255)
+	
+	drawPixelBox(roomX, roomY, elem.x, elem.y, elem.z,
+		elem.width, elem.height, elem.depth, elem.color)
+	
+	// 光沢効果
+	p.Fill(255, 255, 200, 150)
+	for i := 0; i < 3; i++ {
+		offsetX := elem.x + float64(i)*elem.width/3 + 2
+		offsetY := elem.y + elem.height - 2
+		offsetZ := elem.z + 2
+		
+		isoX, isoY := toIsometric(offsetX, offsetY, offsetZ)
+		p.Rect(roomX+isoX-ROOM_SIZE/2, roomY+isoY-ROOM_SIZE/2, PIXEL_SIZE*2, PIXEL_SIZE)
+	}
+}
+
+func drawPixelArtifact(roomX, roomY float64, elem RoomElement) {
+	// 古代の遗物（グラデーション効果）
+	baseHue := float64(hashString(mbtiType+"artifact")) / float64(1<<32) * 360
+	
+	for layer := 0; layer < 5; layer++ {
+		layerHue := math.Mod(baseHue+float64(layer)*30, 360)
+		layerColor := hsvToRGB(layerHue, 0.8, 0.9)
+		p.Fill(layerColor[0], layerColor[1], layerColor[2], 200-layer*20)
+		
+		layerSize := elem.width * (1.0 - float64(layer)*0.15)
+		layerHeight := elem.height * (1.0 - float64(layer)*0.1)
+		offset := (elem.width - layerSize) / 2
+		
+		drawPixelBox(roomX, roomY, elem.x+offset, elem.y+float64(layer)*3, elem.z+offset,
+			layerSize, layerHeight/5, layerSize, elem.color)
+	}
+}
+
+func drawPixelQuantumComputer(roomX, roomY float64, elem RoomElement) {
+	// 量子コンピューター（SF風）
+	baseColor := [3]float64{0, 50, 100}
+	p.Fill(baseColor[0], baseColor[1], baseColor[2], 255)
+	
+	// メインユニット
+	drawPixelBox(roomX, roomY, elem.x, elem.y, elem.z,
+		elem.width, elem.height*0.8, elem.depth, elem.color)
+	
+	// 量子コア（光る球体）
+	coreColors := [][3]float64{
+		{0, 255, 255},   // シアン
+		{255, 0, 255},   // マゼンタ
+		{255, 255, 0},   // 黄色
+	}
+	
+	for i, coreColor := range coreColors {
+		p.Fill(coreColor[0], coreColor[1], coreColor[2], 150)
+		coreX := elem.x + elem.width/2
+		coreY := elem.y + elem.height*0.9
+		coreZ := elem.z + elem.depth/2
+		orbRadius := 8.0 + float64(i)*2
+		
+		// 回転する球体
+		for angle := 0.0; angle < 360; angle += 30 {
+			rad := angle * math.Pi / 180
+			orbX := coreX + orbRadius*math.Cos(rad)
+			orbZ := coreZ + orbRadius*math.Sin(rad)
+			
+			isoX, isoY := toIsometric(orbX, coreY, orbZ)
+			p.Rect(roomX+isoX-ROOM_SIZE/2, roomY+isoY-ROOM_SIZE/2, PIXEL_SIZE*3, PIXEL_SIZE*3)
+		}
+	}
+}
+
+func drawPixelHologram(roomX, roomY float64, elem RoomElement) {
+	// ホログラム投影機
+	baseColor := [3]float64{80, 80, 80}
+	p.Fill(baseColor[0], baseColor[1], baseColor[2], 255)
+	
+	// ベース
+	drawPixelBox(roomX, roomY, elem.x, elem.y, elem.z,
+		elem.width, elem.height*0.3, elem.depth, elem.color)
+	
+	// ホログラム投影（上空に光る影）
+	holoColors := [][3]float64{
+		{0, 255, 150},   // 緑
+		{100, 200, 255}, // 青
+		{255, 150, 255}, // ピンク
+	}
+	
+	for i := 0; i < 20; i++ {
+		holoColor := holoColors[i%len(holoColors)]
+		p.Fill(holoColor[0], holoColor[1], holoColor[2], 100+i*5)
+		
+		holoX := elem.x + elem.width/2 + rand.Float64()*20 - 10
+		holoY := elem.y + elem.height*0.3 + float64(i)*3
+		holoZ := elem.z + elem.depth/2 + rand.Float64()*20 - 10
+		
+		isoX, isoY := toIsometric(holoX, holoY, holoZ)
+		p.Rect(roomX+isoX-ROOM_SIZE/2, roomY+isoY-ROOM_SIZE/2, PIXEL_SIZE*2, PIXEL_SIZE*2)
+	}
+}
+
+func drawPixelTimeMachine(roomX, roomY float64, elem RoomElement) {
+	// タイムマシン（最レア）
+	timeColor := [3]float64{120, 0, 120}
+	p.Fill(timeColor[0], timeColor[1], timeColor[2], 255)
+	
+	// メインユニット
+	drawPixelBox(roomX, roomY, elem.x, elem.y, elem.z,
+		elem.width, elem.height, elem.depth, elem.color)
+	
+	// 時空の歪みエフェクト
+	for ring := 0; ring < 5; ring++ {
+		ringColor := hsvToRGB(280+float64(ring)*20, 0.8, 0.9)
+		p.Fill(ringColor[0], ringColor[1], ringColor[2], 150-ring*20)
+		
+		radius := 15.0 + float64(ring)*8
+		ringY := elem.y + elem.height + float64(ring)*5
+		
+		for angle := 0.0; angle < 360; angle += 20 {
+			rad := angle * math.Pi / 180
+			ringX := elem.x + elem.width/2 + radius*math.Cos(rad)
+			ringZ := elem.z + elem.depth/2 + radius*math.Sin(rad)
+			
+			isoX, isoY := toIsometric(ringX, ringY, ringZ)
+			p.Rect(roomX+isoX-ROOM_SIZE/2, roomY+isoY-ROOM_SIZE/2, PIXEL_SIZE*2, PIXEL_SIZE*2)
+		}
+	}
 }
 
 func toIsometric(x, y, z float64) (float64, float64) {

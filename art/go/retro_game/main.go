@@ -45,10 +45,12 @@ type Monster struct {
 	color       struct{ r, g, b uint8 }
 	catchRate   float64 // 0.0 から 1.0
 	level       int
-	rarity      int    // 1-5 stars
-	hasHat      bool   // レア度の表示用
-	isShiny     bool   // 色違い
-	accessory   string // "none", "crown", "scarf", "glasses", "bowtie", "cape"
+	rarity      int     // 1-5 stars
+	hasHat      bool    // レア度の表示用
+	isShiny     bool    // 色違い
+	accessory   string  // "none", "crown", "scarf", "glasses", "bowtie", "cape"
+	size        string  // "XS", "S", "M", "L", "XL"
+	sizeValue   float64 // 0.5 to 1.5 for actual size multiplier
 }
 
 type Pokeball struct {
@@ -169,6 +171,27 @@ func initBattleScene() {
 	// 色違い判定 (1/100の確率)
 	isShiny := rand.Float64() < 0.01
 
+	// サイズを決定
+	sizeRoll := rand.Float64()
+	var size string
+	var sizeValue float64
+	if sizeRoll < 0.05 {
+		size = "XS"
+		sizeValue = 0.5 + rand.Float64()*0.2 // 0.5-0.7
+	} else if sizeRoll < 0.20 {
+		size = "S"
+		sizeValue = 0.7 + rand.Float64()*0.2 // 0.7-0.9
+	} else if sizeRoll < 0.60 {
+		size = "M"
+		sizeValue = 0.9 + rand.Float64()*0.2 // 0.9-1.1
+	} else if sizeRoll < 0.85 {
+		size = "L"
+		sizeValue = 1.1 + rand.Float64()*0.2 // 1.1-1.3
+	} else {
+		size = "XL"
+		sizeValue = 1.3 + rand.Float64()*0.2 // 1.3-1.5
+	}
+
 	// 帽子判定 (レア度3以上で確率)
 	hasHat := rarity >= 3 || (rarity == 2 && rand.Float64() < 0.3)
 
@@ -208,6 +231,9 @@ func initBattleScene() {
 		}
 	}
 
+	// サイズによる捕獲率調整（大きいほど捕まえにくい）
+	sizeCatchModifier := 2.0 - sizeValue // XS(1.5～1.3) to XL(0.7～0.5)
+
 	wildMonster = Monster{
 		name:        monsterNames[monsterType],
 		monsterType: monsterType,
@@ -216,12 +242,14 @@ func initBattleScene() {
 		hp:          100,
 		maxHP:       100,
 		color:       monsterColor,
-		catchRate:   catchRates[monsterType] - float64(rarity-1)*0.15, // レア度が高いほど捕まえにくい
+		catchRate:   (catchRates[monsterType] - float64(rarity-1)*0.15) * sizeCatchModifier, // レア度とサイズが捕獲率に影響
 		level:       level,
 		rarity:      rarity,
 		hasHat:      hasHat,
 		isShiny:     isShiny,
 		accessory:   accessory,
+		size:        size,
+		sizeValue:   sizeValue,
 	}
 
 	// モンスターボール初期化
@@ -716,7 +744,7 @@ func drawMonster(monster Monster) {
 }
 
 func drawFireMonster(x, y float64, monster Monster) {
-	scale := 1.2
+	scale := 1.2 * monster.sizeValue // サイズを適用
 	ps := float64(pixelSize) * scale
 
 	// ヒトカゲ風ピクセルアート（より詳細に）
@@ -800,7 +828,7 @@ func drawFireMonster(x, y float64, monster Monster) {
 }
 
 func drawWaterMonster(x, y float64, monster Monster) {
-	scale := 1.2
+	scale := 1.2 * monster.sizeValue // サイズを適用
 
 	ps := float64(pixelSize) * scale
 	swim := math.Sin(float64(frameCount)*0.15) * ps * 0.3
@@ -865,7 +893,7 @@ func drawWaterMonster(x, y float64, monster Monster) {
 	// 波紋エフェクト
 	if frameCount%30 < 15 {
 		for i := 0; i < 3; i++ {
-			ringRadius := float64(i+1) * 15 + float64(frameCount%30)
+			ringRadius := float64(i+1)*15 + float64(frameCount%30)
 			alpha := uint8(100 - i*30 - frameCount%30*2)
 			p.Stroke(100, 150, 255, alpha)
 			p.StrokeWeight(2)
@@ -886,7 +914,7 @@ func drawWaterMonster(x, y float64, monster Monster) {
 }
 
 func drawGrassMonster(x, y float64, monster Monster) {
-	scale := 1.2
+	scale := 1.2 * monster.sizeValue // サイズを適用
 
 	ps := float64(pixelSize) * scale
 
@@ -950,7 +978,7 @@ func drawGrassMonster(x, y float64, monster Monster) {
 		petalOffset := math.Sin(float64(frameCount+i*40)*0.1) * ps * 2
 		petalY := y - float64(5+i)*ps + petalOffset
 		petalX := x + float64(i-1)*ps*3
-		
+
 		if frameCount%60 < 30 {
 			p.Fill(255, 150, 200, 150)
 		} else {
@@ -962,7 +990,7 @@ func drawGrassMonster(x, y float64, monster Monster) {
 }
 
 func drawElectricMonster(x, y float64, monster Monster) {
-	scale := 1.0
+	scale := 1.0 * monster.sizeValue // サイズを適用
 
 	ps := float64(pixelSize) * scale
 	staticOffset := math.Sin(float64(frameCount)*0.3) * ps * 0.2
@@ -1026,7 +1054,7 @@ func drawElectricMonster(x, y float64, monster Monster) {
 }
 
 func drawPsychicMonster(x, y float64, monster Monster) {
-	scale := 1.0
+	scale := 1.0 * monster.sizeValue // サイズを適用
 
 	ps := float64(pixelSize) * scale
 	float := math.Sin(float64(frameCount)*0.1) * ps * 0.5
@@ -1131,7 +1159,7 @@ func updateAnimations() {
 				for i := 0; i < 30; i++ {
 					angle := float64(i) * math.Pi * 2 / 30
 					radius := float64(wave+1) * 20
-					
+
 					particles = append(particles, Particle{
 						x:    wildMonster.x + math.Cos(angle)*radius,
 						y:    wildMonster.y + math.Sin(angle)*radius,
@@ -1149,12 +1177,12 @@ func updateAnimations() {
 					})
 				}
 			}
-			
+
 			// スピードラインエフェクト
 			for i := 0; i < 15; i++ {
 				angle := rand.Float64() * math.Pi * 2
 				speed := rand.Float64()*10 + 5
-				
+
 				particles = append(particles, Particle{
 					x:    wildMonster.x,
 					y:    wildMonster.y,
@@ -1199,10 +1227,10 @@ func updateAnimations() {
 					// ボールをモンスターの横に配置
 					pokeball.x = wildMonster.x - 50
 					pokeball.y = wildMonster.y + 20
-					
+
 					// レア度に応じたエフェクト
-					particleCount := 80 + wildMonster.rarity * 50
-					
+					particleCount := 80 + wildMonster.rarity*50
+
 					// リング状のエフェクト（レア度に応じて）
 					for ring := 0; ring < wildMonster.rarity+2; ring++ {
 						for i := 0; i < 36; i++ {
@@ -1225,12 +1253,12 @@ func updateAnimations() {
 							})
 						}
 					}
-					
+
 					// 爆発エフェクト
 					for i := 0; i < 50; i++ {
 						angle := rand.Float64() * math.Pi * 2
 						speed := rand.Float64()*15 + 5
-						
+
 						particles = append(particles, Particle{
 							x:    pokeball.x,
 							y:    pokeball.y,
@@ -1296,7 +1324,7 @@ func updateAnimations() {
 							particleType: "escape",
 						})
 					}
-					
+
 					if captureAttempts >= maxAttempts {
 						// 3回失敗したらゲームオーバー（逃げられた）
 						captureState = "gameover"
@@ -1550,21 +1578,20 @@ func drawCaptureUI() {
 	p.Fill(255, 255, 255, 255)
 	p.TextSize(14)
 
-	if captureState == "encounter" || captureState == "failed" {
+	if captureState == "encounter" {
 		shinyMark := ""
 		if wildMonster.isShiny {
 			shinyMark = "✨"
 		}
 		p.Text(fmt.Sprintf("やせいの %s%s があらわれた！", shinyMark, wildMonster.name), 30, 330)
-		p.TextSize(12)
-		// レア度を星で表示
-		stars := ""
-		for i := 0; i < wildMonster.rarity; i++ {
-			stars += "⭐"
-		}
-		p.Text(fmt.Sprintf("Lv.%d %s", wildMonster.level, stars), 30, 350)
 		p.TextSize(10)
-		p.Text("クリックで ボールを なげる！（ランダム）", 30, 370)
+		p.Text("クリックで ボールを なげる！（ランダム）", 30, 350)
+	} else if captureState == "failed" {
+		p.Text(fmt.Sprintf("%s は ボールから でてしまった！", wildMonster.name), 30, 330)
+		p.TextSize(12)
+		p.Text(fmt.Sprintf("のこり %d かい", maxAttempts-captureAttempts), 30, 350)
+		p.TextSize(10)
+		p.Text("クリックで もういちど ボールを なげる！", 30, 370)
 	} else if captureState == "throwing" {
 		ballNames := []string{"モンスター", "スーパー", "ハイパー", "マスター"}
 		p.Text(fmt.Sprintf("いけっ！ %sボール！", ballNames[pokeball.ballType]), 30, 340)
@@ -1575,7 +1602,7 @@ func drawCaptureUI() {
 		}
 		p.Text(shakeText, 30, 340)
 	} else if captureState == "success" {
-		// 成功時の表示
+		// 成功時の表示（捕獲後に詳細情報を表示）
 		shinyText := ""
 		if wildMonster.isShiny {
 			shinyText = "✨色違い✨ "
@@ -1588,10 +1615,10 @@ func drawCaptureUI() {
 		}
 
 		p.Text(fmt.Sprintf("%s%s を つかまえた！", shinyText, wildMonster.name), 30, 330)
-		p.Text(fmt.Sprintf("Lv.%d %s", wildMonster.level, stars), 30, 350)
+		p.Text(fmt.Sprintf("Lv.%d サイズ:%s %s", wildMonster.level, wildMonster.size, stars), 30, 350)
 		if wildMonster.accessory != "none" {
-			p.TextSize(12)
-			p.Text(fmt.Sprintf("アクセサリー: %s", wildMonster.accessory), 30, 365)
+			p.TextSize(123)
+			p.Text(fmt.Sprintf("アクセサリー: %s", wildMonster.accessory), 30, 350)
 		}
 	} else if captureState == "gameover" {
 		// ゲームオーバー時の表示
