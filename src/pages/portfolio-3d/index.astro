@@ -1,0 +1,88 @@
+---
+import { SEO } from 'astro-seo'
+import { Portfolio3DContent } from '@components/three/Portfolio3DContent'
+import { profileConfig, siteConfig } from '@/config'
+import { Favicon } from '../../types/config'
+import { defaultFavicons } from '../../constants/icon'
+
+const pageTitle = `3D Portfolio - ${siteConfig.title}`
+const description = 'ryomak | kurisu - Backend Engineer Portfolio'
+
+const favicons: Favicon[] =
+  siteConfig.favicon.length > 0 ? siteConfig.favicon : defaultFavicons
+---
+
+<!DOCTYPE html>
+<html lang="ja" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content={description} />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{pageTitle}</title>
+
+    {favicons.map(favicon => (
+      <link rel="icon"
+        href={favicon.src}
+        sizes={favicon.sizes}
+        media={favicon.theme && `(prefers-color-scheme: ${favicon.theme})`}
+      />
+    ))}
+
+    <link rel="alternate" type="application/rss+xml" title={profileConfig.name} href={`${Astro.site}rss.xml`} />
+
+    <SEO
+      openGraph={{
+        basic: {
+          title: pageTitle,
+          type: 'website',
+          image: `https://www.ryomak.jp/og/portfolio-3d.png`,
+        }
+      }}
+      extend={{
+        meta: [
+          { name: "twitter:image", content: `https://www.ryomak.jp/og/portfolio-3d.png` },
+          { name: "twitter:title", content: pageTitle },
+          { name: "twitter:description", content: description },
+        ],
+      }}
+    />
+
+    <style is:global>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <Portfolio3DContent client:only="react" />
+  </body>
+</html>

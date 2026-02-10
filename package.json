@@ -11,7 +11,8 @@
     "new-post": "node scripts/new-post.js",
     "fetch-feed": "tsx scripts/feed.ts",
     "format": "biome format --write ./src",
-    "lint": "biome check --apply ./src"
+    "lint": "biome check --apply ./src",
+    "generate-art": "tsx scripts/generate-art.ts"
   },
   "dependencies": {
     "@astrojs/check": "^0.5.9",
@@ -23,6 +24,8 @@
     "@astrojs/vercel": "^7.5.4",
     "@fontsource-variable/jetbrains-mono": "^5.0.20",
     "@fontsource/roboto": "^5.0.12",
+    "@react-three/drei": "^9.114.3",
+    "@react-three/fiber": "^8.17.10",
     "@rollup/pluginutils": "^5.1.2",
     "@swup/astro": "^1.4.0",
     "@types/fs-extra": "^11.0.4",
@@ -60,6 +63,7 @@
     "sharp": "^0.33.2",
     "svelte": "^4.2.12",
     "tailwindcss": "^3.4.1",
+    "three": "^0.169.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.7.3",
     "typescript": "^5.4.2",
@@ -69,6 +73,7 @@
   "devDependencies": {
     "@astrojs/ts-plugin": "^1.6.0",
     "@biomejs/biome": "1.6.1",
+    "@google/generative-ai": "^0.24.1",
     "@iconify-json/fa6-brands": "^1.1.18",
     "@iconify-json/fa6-regular": "^1.1.18",
     "@iconify-json/fa6-solid": "^1.1.20",
@@ -77,9 +82,11 @@
     "@tailwindcss/typography": "^0.5.10",
     "@types/markdown-it": "^14.0.0",
     "@types/sanitize-html": "^2.11.0",
+    "@types/three": "^0.169.0",
     "stylus": "^0.63.0"
   },
   "resolutions": {
     "cheerio": "1.0.0-rc.12"
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

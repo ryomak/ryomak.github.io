@@ -1,84 +1,364 @@
 ---
 import { arts, getArtWasmName } from '../../art/data/data'
+
+const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
 ---
 
-<main>
-<h2>Webエディタ</h2>
-<p>wasmを用いたコードエディタです。p5goのコードをWeb上で試すことができます。</p>
-<a href="https://p5go-editor.ryomak.jp/" class="stylish-link" target="_blank">p5go Editor</a>
-<h2>p5goを用いた作品集</h2>
-<div class="art-gallery">
-  {arts.map((art) => (
-    <a href={`/art/detail/${getArtWasmName(art)}/`} class="artwork-card">
-      <img src={`/art/${art.language}/${art.name}/art.gif`} class="artwork-preview" />
-    </a>
-  ))}
-</div>
-</main>
+<section class="art-page">
+  <!-- Hero Section -->
+  <div class="hero-section">
+    <div class="hero-content">
+      <h1 class="hero-title">p5go Art Gallery</h1>
+      <p class="hero-description">
+        Goで書くクリエイティブコーディング。<br/>
+        p5goを使ったジェネラティブアートコレクション。
+      </p>
+    </div>
+  </div>
+
+  <!-- Editor Section -->
+  <div class="editor-section">
+    <div class="editor-card">
+      <div class="editor-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 18 22 12 16 6"></polyline>
+          <polyline points="8 6 2 12 8 18"></polyline>
+        </svg>
+      </div>
+      <div class="editor-text">
+        <h3>p5go Editor</h3>
+        <p>ブラウザ上でp5goのコードを試せるWebエディタ</p>
+      </div>
+      <a href="https://p5go-editor.ryomak.jp/" class="editor-link" target="_blank" rel="noopener">
+        Try it
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="7" y1="17" x2="17" y2="7"></line>
+          <polyline points="7 7 17 7 17 17"></polyline>
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  <!-- Gallery Section -->
+  <div class="gallery-section">
+    <div class="section-header">
+      <h2>Works</h2>
+      <span class="work-count">{sortedArts.length} artworks</span>
+    </div>
+
+    <div class="art-gallery">
+      {sortedArts.map((art, index) => (
+        <a
+          href={`/art/detail/${getArtWasmName(art)}/`}
+          class="artwork-card"
+          style={`--delay: ${index * 50}ms`}
+        >
+          <div class="card-image-wrapper">
+            <img
+              src={`/art/${art.language}/${art.name}/art.gif`}
+              alt={art.name}
+              class="artwork-preview"
+              loading="lazy"
+            />
+            <div class="card-overlay">
+              <span class="view-text">View</span>
+            </div>
+          </div>
+          <div class="card-info">
+            <span class="artwork-name">{art.name.replace(/_/g, ' ')}</span>
+            <span class="artwork-date">{art.at}</span>
+          </div>
+          <div class="card-accent"></div>
+        </a>
+      ))}
+    </div>
+  </div>
+</section>
 
 <style>
-  main {
-    padding: 2rem;
-    background-color: #fff;
-    border-radius: 20px;
-  }
-  h2 {
-	  font-size: 1.5rem;
-	  padding: 2rem 0;
-  }
-  p {
-  }
-  .art-gallery {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1rem;
+  .art-page {
+    min-height: 100%;
   }
 
-  .artwork-card {
-    display: flex;
-    flex-direction: column;
-    background: #fff;
-    border-radius: 10px;
+  /* Hero Section */
+  .hero-section {
+    padding: 3rem 2rem;
+    text-align: center;
+    background: var(--card-bg);
+    border-radius: var(--radius-large);
+    margin-bottom: 1.5rem;
+    position: relative;
     overflow: hidden;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease;
+  }
+
+  .hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), transparent);
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0 0 1rem 0;
+    color: var(--primary);
+    letter-spacing: -0.02em;
+  }
+
+  .hero-description {
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin: 0;
+    opacity: 0.7;
+  }
+
+  /* Editor Section */
+  .editor-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .editor-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    background: var(--card-bg);
+    border-radius: var(--radius-large);
+    border: 1px solid var(--line-color);
+    transition: all 0.2s ease;
+  }
+
+  .editor-card:hover {
+    border-color: var(--primary);
+  }
+
+  .editor-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    background: var(--btn-regular-bg);
+    border-radius: 12px;
+    color: var(--primary);
+    flex-shrink: 0;
+  }
+
+  .editor-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .editor-text h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem 0;
+  }
+
+  .editor-text p {
+    font-size: 0.85rem;
+    margin: 0;
+    opacity: 0.6;
+  }
+
+  .editor-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: var(--primary);
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .editor-link:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+
+  /* Gallery Section */
+  .gallery-section {
+    background: var(--card-bg);
+    border-radius: var(--radius-large);
+    padding: 1.5rem;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--line-color);
+  }
+
+  .section-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .work-count {
+    font-size: 0.85rem;
+    opacity: 0.5;
+  }
+
+  .art-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.25rem;
+  }
+
+  /* Artwork Card */
+  .artwork-card {
+    display: block;
+    position: relative;
+    background: var(--btn-regular-bg);
+    border-radius: 12px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.3s ease;
+    animation: fadeInUp 0.4s ease forwards;
+    animation-delay: var(--delay);
+    opacity: 0;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .artwork-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
+  }
+
+  .artwork-card:hover .card-overlay {
+    opacity: 1;
+  }
+
+  .artwork-card:hover .card-accent {
+    transform: scaleX(1);
+  }
+
+  .card-image-wrapper {
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;
   }
 
   .artwork-preview {
     width: 100%;
-    height: auto;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+  }
+
+  .artwork-card:hover .artwork-preview {
+    transform: scale(1.05);
+  }
+
+  .card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 50%);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 1rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .view-text {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: white;
+    padding: 0.5rem 1rem;
+    background: var(--primary);
+    border-radius: 20px;
+  }
+
+  .card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.875rem 1rem;
   }
 
   .artwork-name {
-    padding: 1rem;
-  }
-
-  .artwork-name h2 {
-    font-size: 1.2rem;
-    margin: 0 0 0.5rem;
-  }
-
-  .artwork-name p {
     font-size: 0.9rem;
-    margin: 0;
-    color: #666;
+    font-weight: 500;
+    text-transform: capitalize;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .stylish-link {
-    text-decoration: none;
-    color: inherit;
-    display: block;
-    margin: 2rem;
-    text-align: center;
-    font-size: 1.5rem;
-    font-weight: bold;
-    padding: 2rem;
-    background-color: var(--btn-regular-bg);
-    color: var(--btn-content);
-    border-radius: 10px;
+  .artwork-date {
+    font-size: 0.75rem;
+    opacity: 0.5;
+  }
+
+  .card-accent {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .hero-section {
+      padding: 2rem 1.5rem;
+    }
+
+    .hero-title {
+      font-size: 1.5rem;
+    }
+
+    .editor-card {
+      flex-wrap: wrap;
+    }
+
+    .editor-link {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .art-gallery {
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 1rem;
+    }
+
+    .gallery-section {
+      padding: 1rem;
+    }
   }
 </style>
