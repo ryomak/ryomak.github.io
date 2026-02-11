@@ -1,15 +1,27 @@
 ---
 import { SEO } from 'astro-seo'
-import { Portfolio3DContent } from '@components/three/Portfolio3DContent'
+import { Portfolio3DContentMonolith } from '@components/three/Portfolio3DContentMonolith'
 import { profileConfig, siteConfig } from '@/config'
 import { Favicon } from '../../types/config'
 import { defaultFavicons } from '../../constants/icon'
+import { getCollection } from 'astro:content'
 
 const pageTitle = `3D Portfolio - ${siteConfig.title}`
 const description = 'ryomak | kurisu - Backend Engineer Portfolio'
 
 const favicons: Favicon[] =
   siteConfig.favicon.length > 0 ? siteConfig.favicon : defaultFavicons
+
+// Worksカテゴリの投稿を取得（OSS系）
+const allPosts = await getCollection('posts')
+const works = allPosts
+  .filter(post => post.data.category === 'Works' && !post.data.draft)
+  .sort((a, b) => b.data.published.getTime() - a.data.published.getTime())
+  .map(post => ({
+    name: post.slug.replace('oss-', '').replace(/\/index$/, ''),
+    desc: post.data.description || post.data.title,
+    url: `/posts/${post.slug}`,
+  }))
 ---
 
 <!DOCTYPE html>
@@ -83,6 +95,6 @@ const favicons: Favicon[] =
     </style>
   </head>
   <body>
-    <Portfolio3DContent client:only="react" />
+    <Portfolio3DContentMonolith client:only="react" works={works} />
   </body>
 </html>
