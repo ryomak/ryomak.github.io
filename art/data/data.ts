@@ -44,6 +44,11 @@ export const arts: Data[] = [
 		language: "go",
 		name: "personality_world",
 		at: "2025-08-08"
+	},
+	{
+		language: "go",
+		name: "heart_and_keyblade",
+		at: "2026-02-16"
 	}
 ];
 
