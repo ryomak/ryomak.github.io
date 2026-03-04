@@ -1,4 +1,4 @@
-# ryomak | kurisu
+# ryomak
 
 ##
 
