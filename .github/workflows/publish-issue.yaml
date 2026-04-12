@@ -20,10 +20,13 @@ jobs:
 
       - name: Define date and file name
         id: define_date_and_filename
+        env:
+          ISSUE_NUMBER: "${{ github.event.issue.number }}"
+          ISSUE_TITLE: "${{ github.event.issue.title }}"
         run: |
           date=$(date +%Y%m%d)
-          issue_id=${{ github.event.issue.number }}
-          title=${{ github.event.issue.title }}
+          issue_id="$ISSUE_NUMBER"
+          title="$ISSUE_TITLE"
           filename="${date}_${issue_id}.md"
           branch_name="${date}_${issue_id}"
           echo "filename=$filename" >> $GITHUB_OUTPUT
