@@ -1,11 +1,12 @@
 ---
 import path from 'path'
-import PostMetadata from './PostMeta.astro'
 import ImageWrapper from './misc/ImageWrapper.astro'
 import { Icon } from 'astro-icon/components'
 import { i18n } from '../i18n/translation'
 import I18nKey from '../i18n/i18nKey'
 import { getDir } from '../utils/url-utils'
+import { formatDateToYYYYMMDD } from '../utils/date-utils'
+import '@fontsource-variable/jetbrains-mono'
 
 interface Props {
   class: string
@@ -30,89 +31,216 @@ const {
   category,
   image,
   description,
-  words,
-  style,
 } = Astro.props
 const className = Astro.props.class
+const style = Astro.props.style
 
 const hasCover = image !== undefined && image !== null && image !== ''
-
-const coverWidth = '28%'
+const isExternal = entry.data.external
 
 const wordFetch = async entry => {
   if (entry.data.external) {
-    return {
-      words: '-',
-      minutes: '-',
-    }
+    return { words: '-', minutes: '-' }
   }
   const { remarkPluginFrontmatter } = await entry.render()
-
   return {
     words: remarkPluginFrontmatter.words,
     minutes: remarkPluginFrontmatter.minutes,
   }
 }
-
 const wordData = await wordFetch(entry)
 ---
-<div class:list={["card-base flex flex-col-reverse md:flex-col w-full rounded-[var(--radius-large)] overflow-hidden relative", className]} style={style}>
-    <div class:list={["pl-6 md:pl-9 pr-6 md:pr-2 pt-6 md:pt-7 pb-6 relative", {"w-full md:w-[calc(100%_-_52px_-_12px)]": !hasCover, "w-full md:w-[calc(100%_-_var(--coverWidth)_-_12px)]": hasCover}]}>
-        <a href={url}
-           class="transition w-full block font-bold mb-3 text-2xl text-90
-        hover:text-[var(--primary)] dark:hover:text-[var(--primary)]
-        active:text-[var(--title-active)] dark:active:text-[var(--title-active)]
-        before:w-1 before:h-5 before:rounded-md before:bg-[var(--primary)]
-        before:absolute before:top-[35px] before:left-[18px] before:hidden md:before:block
-        ">
-            {title}<Icon class="inline text-[var(--primary)] md:hidden -translate-y-[0.15rem]" name="material-symbols:chevron-right-rounded" size={28} ></Icon>
-        </a>
+<article class:list={["post-card reveal card-base group", className]} style={style}>
+  <a href={url} aria-label={title} class="post-card-link" target={isExternal ? '_blank' : undefined} rel={isExternal ? 'noopener' : undefined}>
+    <span class="post-accent"></span>
 
-        <!-- metadata -->
-        <PostMetadata published={published} tags={tags} category={category} hideTagsForMobile={true} class:list={{"mb-4": description, "mb-6": !description}}></PostMetadata>
+    <div class="post-body">
+      <div class="post-meta">
+        <time class="post-date">{formatDateToYYYYMMDD(published)}</time>
+        <span class="post-cat">{category || i18n(I18nKey.uncategorized)}</span>
+        {isExternal && <span class="post-ext">EXTERNAL</span>}
+      </div>
 
-        <!-- description -->
-        <div class="transition text-75 mb-3.5">
-            { description }
+      <h2 class="post-title">{title}</h2>
+
+      {description && <p class="post-desc">{description}</p>}
+
+      <div class="post-footer">
+        {!isExternal && (
+          <span class="post-readtime">
+            {wordData.minutes} {i18n(I18nKey.minutesCount)}
+          </span>
+        )}
+        <div class="post-tags">
+          {(tags && tags.length > 0) && tags.slice(0, 4).map(tag => (
+            <span class="post-tag">#{tag}</span>
+          ))}
         </div>
-
-        <!-- word count and read time  -->
-        <div class="text-sm text-black/30 dark:text-white/30 flex gap-4 transition">
-            <div>{wordData.words} {" " + i18n(I18nKey.wordsCount)}</div>
-            <div>|</div>
-            <div>{wordData.minutes} {" " + i18n(I18nKey.minutesCount)}</div>
-        </div>
-
+      </div>
     </div>
 
-    {hasCover && <a href={url} aria-label={title}
-                    class:list={["group",
-                        "max-h-[20vh] md:max-h-none mx-4 mt-4 -mb-2 md:mb-0 md:mx-0 md:mt-0",
-                        "md:w-[var(--coverWidth)] relative md:absolute md:top-3 md:bottom-3 md:right-3 rounded-xl overflow-hidden active:scale-95"
-                    ]} >
-        <div class="absolute pointer-events-none z-10 w-full h-full group-hover:bg-black/30 group-active:bg-black/50 transition"></div>
-        <div class="absolute pointer-events-none z-20 w-full h-full flex items-center justify-center ">
-            <Icon name="material-symbols:chevron-right-rounded"
-                  class="transition opacity-0 group-hover:opacity-100 text-white text-5xl">
-            </Icon>
-        </div>
-        <ImageWrapper src={image} basePath={path.join("content/posts/", getDir(entry.id))} alt="Cover Image of the Post"
-                  class="w-full h-full">
-        </ImageWrapper>
-    </a>}
+    {hasCover && (
+      <div class="post-cover">
+        <ImageWrapper src={image} basePath={path.join("content/posts/", getDir(entry.id))} alt={title} class="post-cover-img" />
+      </div>
+    )}
 
-    {!hasCover &&
-        <a href={url} aria-label={title} class="hidden md:flex btn-regular w-[3.25rem]
-         absolute right-3 top-3 bottom-3 rounded-xl bg-[var(--enter-btn-bg)]
-         hover:bg-[var(--enter-btn-bg-hover)] active:bg-[var(--enter-btn-bg-active)] active:scale-95
-        ">
-            <Icon name="material-symbols:chevron-right-rounded"
-                  class="transition text-[var(--primary)] text-4xl mx-auto">
-            </Icon>
-        </a>
-    }
-</div>
-<div class="transition border-t-[1px] border-dashed mx-6 border-black/10 dark:border-white/[0.15] last:border-t-0 md:hidden"></div>
+    <span class="post-arrow">
+      <Icon name={isExternal ? 'fa6-solid:arrow-up-right-from-square' : 'material-symbols:arrow-forward-rounded'} />
+    </span>
+  </a>
+</article>
 
-<style lang="stylus" define:vars={{coverWidth}}>
+<style lang="stylus">
+  .post-card
+    margin-bottom: 1rem
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease
+  .post-card:hover
+    transform: translateY(-3px)
+    box-shadow: unquote('0 16px 40px -20px color-mix(in oklch, var(--primary) 60%, transparent)')
+
+  .post-card-link
+    position: relative
+    display: flex
+    align-items: stretch
+    gap: 1.25rem
+    padding: 1.6rem 1.9rem
+    overflow: hidden
+
+  .post-accent
+    position: absolute
+    left: 0
+    top: 1.6rem
+    bottom: 1.6rem
+    width: 3px
+    border-radius: 999px
+    background: var(--primary)
+    transform: scaleY(0.25)
+    transform-origin: center
+    opacity: 0.5
+    transition: transform 0.3s ease, opacity 0.3s ease
+  .post-card:hover .post-accent
+    transform: scaleY(1)
+    opacity: 1
+
+  .post-body
+    flex: 1
+    min-width: 0
+
+  .post-meta
+    display: flex
+    align-items: center
+    gap: 0.6rem
+    margin-bottom: 0.6rem
+    flex-wrap: wrap
+  .post-date
+    font-family: 'JetBrains Mono Variable', ui-monospace, monospace
+    font-size: 0.8rem
+    color: rgba(130, 130, 130, 0.95)
+  .post-cat
+    font-size: 0.7rem
+    font-weight: 700
+    letter-spacing: 0.03em
+    text-transform: uppercase
+    color: var(--primary)
+    padding: 0.12rem 0.5rem
+    border-radius: 999px
+    background: unquote('color-mix(in oklch, var(--primary) 14%, transparent)')
+  .post-ext
+    font-family: 'JetBrains Mono Variable', ui-monospace, monospace
+    font-size: 0.62rem
+    letter-spacing: 0.08em
+    color: rgba(130, 130, 130, 0.9)
+    border: 1px solid rgba(130, 130, 130, 0.3)
+    padding: 0.08rem 0.4rem
+    border-radius: 4px
+
+  .post-title
+    font-size: clamp(1.15rem, 2.2vw, 1.5rem)
+    font-weight: 700
+    line-height: 1.3
+    color: var(--deep-text, #232323)
+    transition: color 0.2s ease
+    display: -webkit-box
+    -webkit-line-clamp: 2
+    -webkit-box-orient: vertical
+    overflow: hidden
+  :global(.dark) .post-title
+    color: #ededed
+  .post-card:hover .post-title
+    color: var(--primary)
+
+  .post-desc
+    margin-top: 0.55rem
+    font-size: 0.92rem
+    line-height: 1.6
+    color: rgba(115, 115, 115, 0.95)
+    display: -webkit-box
+    -webkit-line-clamp: 2
+    -webkit-box-orient: vertical
+    overflow: hidden
+
+  .post-footer
+    display: flex
+    align-items: center
+    gap: 0.9rem
+    margin-top: 0.9rem
+    flex-wrap: wrap
+  .post-readtime
+    font-family: 'JetBrains Mono Variable', ui-monospace, monospace
+    font-size: 0.74rem
+    color: rgba(140, 140, 140, 0.9)
+  .post-tags
+    display: flex
+    gap: 0.4rem
+    flex-wrap: wrap
+  .post-tag
+    font-size: 0.72rem
+    color: rgba(120, 120, 120, 0.95)
+    transition: color 0.2s ease
+  .post-card:hover .post-tag
+    color: var(--primary)
+
+  .post-cover
+    flex: 0 0 34%
+    max-width: 34%
+    border-radius: 0.85rem
+    overflow: hidden
+    align-self: stretch
+    min-height: 8.5rem
+  .post-cover-img
+    width: 100%
+    height: 100%
+    object-fit: cover
+    transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)
+  .post-card:hover .post-cover-img
+    transform: scale(1.06)
+
+  .post-arrow
+    position: absolute
+    right: 1.4rem
+    bottom: 1.3rem
+    color: var(--primary)
+    font-size: 1.05rem
+    opacity: 0
+    transform: translateX(-6px)
+    transition: opacity 0.3s ease, transform 0.3s ease
+  .post-card:hover .post-arrow
+    opacity: 1
+    transform: translateX(0)
+
+  @media (max-width: 768px)
+    .post-card-link
+      flex-direction: column-reverse
+      padding: 1.3rem 1.4rem
+    .post-cover
+      flex: none
+      max-width: 100%
+      width: 100%
+      height: 10rem
+      min-height: 0
+    .post-accent
+      display: none
+    .post-arrow
+      display: none
 </style>

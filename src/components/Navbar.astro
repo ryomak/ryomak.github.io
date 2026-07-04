@@ -1,6 +1,5 @@
 ---
 import { Icon } from 'astro-icon/components'
-import DisplaySettings from './widget/DisplaySettings.svelte'
 import { LinkPreset, NavBarLink } from '../types/config'
 import { navBarConfig, siteConfig } from '../config'
 import NavMenuPanel from './widget/NavMenuPanel.astro'
@@ -40,9 +39,6 @@ let links: NavBarLink[] = navBarConfig.links.map(
             <Icon slot="arrow-icon" name="fa6-solid:chevron-right" size={"0.75rem"} class="transition translate-x-0.5 my-auto text-[var(--primary)]"></Icon>
             <Icon slot="search-switch" name="material-symbols:search" size={"1.25rem"}></Icon>
         </Search>
-        <button aria-label="Display Settings" class="btn-plain h-11 w-11 rounded-lg active:scale-90" id="display-settings-switch">
-            <Icon name="material-symbols:palette-outline" size={"1.25rem"}></Icon>
-        </button>
         <button aria-label="Light/Dark Mode" class="btn-plain h-11 w-11 rounded-lg active:scale-90" id="scheme-switch">
             <Icon name="material-symbols:wb-sunny-outline-rounded" size={"1.25rem"} class="absolute opacity-[var(--display-light-icon)]"></Icon>
             <Icon name="material-symbols:dark-mode-outline-rounded" size={"1.25rem"} class="absolute opacity-[var(--display-dark-icon)]"></Icon>
@@ -52,9 +48,6 @@ let links: NavBarLink[] = navBarConfig.links.map(
         </button>
     </div>
     <NavMenuPanel links={links}></NavMenuPanel>
-    <DisplaySettings client:only="svelte">
-        <Icon slot="restore-icon" name="fa6-solid:arrow-rotate-left" size={"0.875rem"} class=""></Icon>
-    </DisplaySettings>
 </div>
 
 <style lang="stylus">
@@ -76,12 +69,6 @@ function loadButtonScript() {
     let switchBtn = document.getElementById("scheme-switch");
     switchBtn.addEventListener("click", function () {
         switchTheme()
-    });
-
-    let settingBtn = document.getElementById("display-settings-switch");
-    settingBtn.addEventListener("click", function () {
-        let settingPanel = document.getElementById("display-setting");
-        settingPanel.classList.toggle("closed");
     });
 
     let menuBtn = document.getElementById("nav-menu-switch");

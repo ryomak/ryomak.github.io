@@ -1,0 +1,28 @@
+---
+import { skills } from '../data'
+import '@fontsource-variable/jetbrains-mono'
+---
+<div class="mg-skills">
+  {skills.map((s, i) => (
+    <span class="mg-skill reveal" style={`--d: ${i * 40}ms`}>{s}</span>
+  ))}
+</div>
+
+<style lang="stylus">
+  .mg-skills
+    display: flex
+    flex-wrap: wrap
+    gap: 0.7rem 0.9rem
+  .mg-skill
+    font-family: 'JetBrains Mono Variable', monospace
+    font-size: 0.92rem
+    letter-spacing: 0.02em
+    color: var(--mg-ink)
+    padding: 0.45rem 0.9rem
+    border: 1.5px solid var(--mg-line)
+    border-radius: 999px
+    transition: border-color 0.3s ease, transform 0.3s ease
+  .mg-skill:hover
+    border-color: var(--mg-ink)
+    transform: translateY(-2px)
+</style>

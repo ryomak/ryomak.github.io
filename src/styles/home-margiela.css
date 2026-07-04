@@ -1,0 +1,107 @@
+/* Margiela home — global bits that can't be component-scoped:
+   - the palette tokens (gated to `html.home-margiela`, toggled per-route)
+   - the floating section index, which is created in <body> by the client script */
+
+html.home-margiela {
+  --mg-bg: #f2efe9;
+  --mg-ink: #191919;
+  --mg-muted: #8c877b;
+  --mg-line: rgba(25, 25, 25, 0.28);
+  --mg-tag: #ffffff;
+  /* one uniform canvas: navbar/footer match the page so there is no seam */
+  --card-bg: #f2efe9 !important;
+  background-color: var(--mg-bg) !important;
+}
+html.home-margiela.dark {
+  --mg-bg: #100f0e;
+  --mg-ink: #ece7dc;
+  --mg-muted: #7c766a;
+  --mg-line: rgba(236, 231, 220, 0.26);
+  --mg-tag: #ece7dc;
+  --card-bg: #100f0e !important;
+}
+
+/* neutralise the WebGL fallback glow (was theme-green) */
+html.home-margiela .hero-webgl-fallback {
+  background: radial-gradient(120% 90% at 78% 18%, rgba(120, 120, 120, 0.1), transparent 62%) !important;
+}
+
+/* ---- floating section index (built in JS, appended to <body>) ---- */
+.mg-label {
+  position: fixed;
+  top: 6.4rem;
+  right: 1.8rem;
+  z-index: 40;
+  width: 11rem;
+  padding: 0.9rem 1rem 0.95rem;
+  background: var(--mg-tag);
+  color: #191919;
+  box-shadow: 0 12px 34px -16px rgba(0, 0, 0, 0.45);
+  transform: rotate(-1.8deg);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+}
+.mg-label.is-visible {
+  opacity: 1;
+}
+.mg-label-head {
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #9a958a;
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 0.55rem;
+  margin-bottom: 0.35rem;
+  border-bottom: 1px dashed rgba(25, 25, 25, 0.28);
+}
+.mg-idx {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mg-idx li {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  height: 1.95rem;
+  cursor: pointer;
+  color: #b3aea3;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+.mg-idx li:hover {
+  transform: translateX(2px);
+}
+.mg-idx li.is-current {
+  color: #191919;
+}
+.mg-idx .n {
+  font-size: 0.72rem;
+  width: 1.5rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+.mg-idx .nm {
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.mg-idx-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1.7rem;
+  height: 1.7rem;
+  pointer-events: none;
+  color: #191919;
+  transition: transform 0.5s cubic-bezier(0.34, 1.4, 0.5, 1);
+  transform: translateY(-100px);
+}
+
+@media (max-width: 1023px) {
+  .mg-label {
+    display: none;
+  }
+}

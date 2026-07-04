@@ -1,0 +1,71 @@
+---
+import { writings } from '../data'
+import '@fontsource-variable/jetbrains-mono'
+---
+<ul class="mg-list">
+  {writings.map((w, i) => (
+    <li class="reveal" style={`--d: ${i * 70}ms`}>
+      <a class="mg-row" href={w.url} target="_blank" rel="noopener">
+        <time class="mg-row-date">{w.date}</time>
+        <span class="mg-row-kind">{w.kind}</span>
+        <span class="mg-row-title">{w.title}</span>
+        <span class="mg-row-idx">↗</span>
+      </a>
+    </li>
+  ))}
+</ul>
+
+<style lang="stylus">
+  .mg-list
+    list-style: none
+    padding: 0
+    margin: 0
+  .mg-row
+    position: relative
+    display: grid
+    grid-template-columns: 5rem 4rem 1fr auto
+    align-items: baseline
+    gap: 1rem
+    padding: 1.1rem 0.3rem
+    border-bottom: 1px solid var(--mg-line)
+    transition: padding-left 0.35s cubic-bezier(0.22, 1, 0.36, 1)
+  .mg-row:hover
+    padding-left: 1rem
+  .mg-row-date
+    font-family: 'JetBrains Mono Variable', monospace
+    font-size: 0.8rem
+    color: var(--mg-muted)
+  .mg-row-kind
+    font-family: 'JetBrains Mono Variable', monospace
+    font-size: 0.66rem
+    letter-spacing: 0.08em
+    text-transform: uppercase
+    color: var(--mg-muted)
+    border: 1px solid var(--mg-line)
+    padding: 0.1rem 0.4rem
+    border-radius: 2px
+    justify-self: start
+  .mg-row-title
+    font-size: 1rem
+    color: var(--mg-ink)
+    line-height: 1.4
+  .mg-row-idx
+    font-family: 'JetBrains Mono Variable', monospace
+    color: var(--mg-ink)
+    opacity: 0
+    transform: translate(-4px, 0)
+    transition: opacity 0.3s ease, transform 0.3s ease
+  .mg-row:hover .mg-row-idx
+    opacity: 1
+    transform: translate(0, 0)
+
+  @media (max-width: 768px)
+    .mg-row
+      grid-template-columns: 1fr auto
+      gap: 0.4rem 0.8rem
+    .mg-row-title
+      grid-column: 1 / -1
+      order: 3
+    .mg-row-idx
+      display: none
+</style>

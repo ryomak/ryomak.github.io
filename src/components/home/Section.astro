@@ -1,0 +1,49 @@
+---
+import '@fontsource-variable/jetbrains-mono'
+
+interface Props {
+  index: number
+  id: string
+  num?: string
+  /** chapter heading; omit for the hero */
+  name?: string
+  class?: string
+}
+const { index, id, num, name, class: className } = Astro.props
+---
+<section class:list={['mg-sec', className]} id={id} data-mg-index={index}>
+  {name && (
+    <div class="mg-chap reveal">
+      <span class="mg-chap-num">{num}</span>
+      <span class="mg-chap-line"></span>
+      <span class="mg-chap-name">{name}</span>
+    </div>
+  )}
+  <slot />
+</section>
+
+<style lang="stylus">
+  .mg-sec
+    position: relative
+    z-index: 1
+    padding: 2.5rem 0.5rem
+
+  .mg-chap
+    display: flex
+    align-items: center
+    gap: 1rem
+    margin-bottom: 1.8rem
+  .mg-chap-num
+    font-family: 'JetBrains Mono Variable', monospace
+    font-size: 0.8rem
+    letter-spacing: 0.1em
+    color: var(--mg-muted)
+  .mg-chap-line
+    width: 2.5rem
+    height: 1px
+    background: var(--mg-ink)
+  .mg-chap-name
+    font-size: 1.5rem
+    font-weight: 400
+    letter-spacing: 0.01em
+</style>

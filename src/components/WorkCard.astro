@@ -3,6 +3,7 @@ import path from 'path'
 import ImageWrapper from './misc/ImageWrapper.astro'
 import { Icon } from 'astro-icon/components'
 import { getDir } from '../utils/url-utils'
+import '@fontsource-variable/jetbrains-mono'
 
 interface Props {
   class: string
@@ -22,36 +23,126 @@ const {
   entry,
   title,
   url,
-  published,
   tags,
-  category,
   image,
   description,
-  words,
-  style,
 } = Astro.props
 const className = Astro.props.class
+const style = Astro.props.style
 
+const isExternal = entry.data.external
 const imageUrl =
   image ||
   'https://github.com/ryomak/ryomak.github.io/assets/21288308/0e893d2c-7e5b-4277-b1ea-0c0f2628fe82'
 ---
-<div class="w-full mb-4">
-    <div class="space-y-6">
-        <div class:list={["card-base flex flex-col w-full rounded-[var(--radius-large)] overflow-hidden relative", className]} style={style}>
-            <a href={url} aria-label={title} class:list={["group", "relative rounded-xl overflow-hidden active:scale-95"]}>
-                <div class="absolute pointer-events-none z-10 w-full h-full group-hover:bg-black/30 group-active:bg-black/50 transition"></div>
-                <div class="absolute pointer-events-none z-20 w-full h-full flex items-center justify-center">
-                    <Icon name="material-symbols:chevron-right-rounded" class="transition opacity-0 group-hover:opacity-100 text-white text-5xl"></Icon>
-                </div>
-                <ImageWrapper src={imageUrl} basePath={path.join("content/posts/", getDir(entry.id))} alt="Cover Image of the Post" class="w-full object-cover object-center" ></ImageWrapper>
-            </a>
-            <div class:list={["px-4 py-3"]}>
-                <a href={url} class="transition w-full block font-bold text-lg text-90 hover:text-[var(--primary)] dark:hover:text-[var(--primary)] active:text-[var(--title-active)] dark:active:text-[var(--title-active)]">
-                    {title}
-                    <Icon class="inline text-[var(--primary)] -translate-y-[0.15rem]" name="material-symbols:chevron-right-rounded" size={24}></Icon>
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
+<a
+  href={url}
+  aria-label={title}
+  target={isExternal ? '_blank' : undefined}
+  rel={isExternal ? 'noopener' : undefined}
+  class:list={["work-card reveal card-base group", className]}
+  style={style}
+>
+  <div class="work-cover">
+    <ImageWrapper src={imageUrl} basePath={path.join("content/posts/", getDir(entry.id))} alt={title} class="work-cover-img" />
+    <div class="work-overlay"></div>
+    <span class="work-launch">
+      <Icon name={isExternal ? 'fa6-solid:arrow-up-right-from-square' : 'material-symbols:arrow-forward-rounded'} />
+    </span>
+  </div>
+
+  <div class="work-body">
+    <h2 class="work-title">{title}</h2>
+    {description && <p class="work-desc">{description}</p>}
+    {(tags && tags.length > 0) && (
+      <div class="work-tags">
+        {tags.slice(0, 4).map(tag => <span class="work-tag">#{tag}</span>)}
+      </div>
+    )}
+  </div>
+</a>
+
+<style lang="stylus">
+  .work-card
+    display: block
+    overflow: hidden
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease
+  .work-card:hover
+    transform: translateY(-5px)
+    box-shadow: unquote('0 22px 50px -24px color-mix(in oklch, var(--primary) 65%, transparent)')
+
+  .work-cover
+    position: relative
+    aspect-ratio: 16 / 9
+    overflow: hidden
+  .work-cover-img
+    width: 100%
+    height: 100%
+    object-fit: cover
+    object-position: center
+    transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)
+  .work-card:hover .work-cover-img
+    transform: scale(1.07)
+  .work-overlay
+    position: absolute
+    inset: 0
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.28), transparent 55%)
+    opacity: 0
+    transition: opacity 0.35s ease
+  .work-card:hover .work-overlay
+    opacity: 1
+
+  .work-launch
+    position: absolute
+    right: 0.85rem
+    top: 0.85rem
+    width: 2.2rem
+    height: 2.2rem
+    display: flex
+    align-items: center
+    justify-content: center
+    border-radius: 0.6rem
+    background: var(--card-bg)
+    color: var(--primary)
+    font-size: 0.9rem
+    opacity: 0
+    transform: translateY(-6px) scale(0.9)
+    transition: opacity 0.3s ease, transform 0.3s ease
+  .work-card:hover .work-launch
+    opacity: 1
+    transform: translateY(0) scale(1)
+
+  .work-body
+    padding: 1.1rem 1.25rem 1.3rem
+  .work-title
+    font-size: 1.15rem
+    font-weight: 700
+    line-height: 1.35
+    color: var(--deep-text, #232323)
+    transition: color 0.2s ease
+  :global(.dark) .work-title
+    color: #ededed
+  .work-card:hover .work-title
+    color: var(--primary)
+  .work-desc
+    margin-top: 0.45rem
+    font-size: 0.86rem
+    line-height: 1.55
+    color: rgba(115, 115, 115, 0.95)
+    display: -webkit-box
+    -webkit-line-clamp: 2
+    -webkit-box-orient: vertical
+    overflow: hidden
+  .work-tags
+    display: flex
+    flex-wrap: wrap
+    gap: 0.4rem
+    margin-top: 0.8rem
+  .work-tag
+    font-family: 'JetBrains Mono Variable', ui-monospace, monospace
+    font-size: 0.7rem
+    color: var(--primary)
+    padding: 0.1rem 0.5rem
+    border-radius: 999px
+    background: unquote('color-mix(in oklch, var(--primary) 12%, transparent)')
+</style>

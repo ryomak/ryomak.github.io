@@ -1,11 +1,13 @@
 ---
 import MainGridLayout from '@layouts/MainGridLayout.astro'
 import ArchivePanel from '@components/ArchivePanel.astro'
+import PageHeader from '@components/PageHeader.astro'
 import { i18n } from '@i18n/translation'
 import I18nKey from '@i18n/i18nKey'
 ---
 
 <MainGridLayout title={i18n(I18nKey.archive)} slug="none">
+    <PageHeader title="Archive" subtitle="すべての記事を時系列で" />
     <ArchivePanel></ArchivePanel>
 </MainGridLayout>
 

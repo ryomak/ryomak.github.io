@@ -1,57 +1,55 @@
 ---
 import { arts, getArtWasmName } from '../../art/data/data'
+import PageHeader from './PageHeader.astro'
+import '@fontsource-variable/jetbrains-mono'
 
 const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
 ---
 
 <section class="art-page">
-  <!-- Hero Section -->
-  <div class="hero-section">
-    <div class="hero-content">
-      <h1 class="hero-title">p5go Art Gallery</h1>
-      <p class="hero-description">
-        Goで書くクリエイティブコーディング。<br/>
-        p5goを使ったジェネラティブアートコレクション。
-      </p>
-    </div>
-  </div>
+  <PageHeader
+    title="Art"
+    subtitle="Goで書くクリエイティブコーディング。p5goによるジェネラティブアートコレクション。"
+    count={sortedArts.length}
+    countLabel="artworks"
+  />
 
-  <!-- Editor Section -->
-  <div class="editor-section">
-    <div class="editor-card">
-      <div class="editor-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="16 18 22 12 16 6"></polyline>
-          <polyline points="8 6 2 12 8 18"></polyline>
-        </svg>
-      </div>
-      <div class="editor-text">
-        <h3>p5go Editor</h3>
-        <p>ブラウザ上でp5goのコードを試せるWebエディタ</p>
-      </div>
-      <a href="https://p5go-editor.ryomak.jp/" class="editor-link" target="_blank" rel="noopener">
-        Try it
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="7" y1="17" x2="17" y2="7"></line>
-          <polyline points="7 7 17 7 17 17"></polyline>
-        </svg>
-      </a>
+  <!-- Editor CTA -->
+  <a href="https://p5go-editor.ryomak.jp/" class="editor-card reveal card-base group" target="_blank" rel="noopener">
+    <div class="editor-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="16 18 22 12 16 6"></polyline>
+        <polyline points="8 6 2 12 8 18"></polyline>
+      </svg>
     </div>
-  </div>
+    <div class="editor-text">
+      <span class="editor-label">Playground</span>
+      <h3 class="editor-title">p5go Editor</h3>
+      <p class="editor-sub">ブラウザ上でp5goのコードを試せるWebエディタ</p>
+    </div>
+    <span class="editor-cta">
+      Try it
+      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="7" y1="17" x2="17" y2="7"></line>
+        <polyline points="7 7 17 7 17 17"></polyline>
+      </svg>
+    </span>
+  </a>
 
-  <!-- Gallery Section -->
-  <div class="gallery-section">
-    <div class="section-header">
-      <h2>Works</h2>
-      <span class="work-count">{sortedArts.length} artworks</span>
+  <!-- Gallery -->
+  <div class="gallery-section card-base">
+    <div class="section-head reveal">
+      <span class="sh-caret">&gt;</span>
+      <h2 class="sh-title">Works</h2>
+      <div class="sh-rule"></div>
     </div>
 
     <div class="art-gallery">
       {sortedArts.map((art, index) => (
         <a
           href={`/art/detail/${getArtWasmName(art)}/`}
-          class="artwork-card"
-          style={`--delay: ${index * 50}ms`}
+          class="artwork-card reveal group"
+          style={`--d: ${index * 55}ms`}
         >
           <div class="card-image-wrapper">
             <img
@@ -75,290 +73,189 @@ const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(
   </div>
 </section>
 
-<style>
-  .art-page {
-    min-height: 100%;
-  }
+<style lang="stylus">
+  .art-page
+    min-height: 100%
 
-  /* Hero Section */
-  .hero-section {
-    padding: 3rem 2rem;
-    text-align: center;
-    background: var(--card-bg);
-    border-radius: var(--radius-large);
-    margin-bottom: 1.5rem;
-    position: relative;
-    overflow: hidden;
-  }
+  // Editor CTA
+  .editor-card
+    display: flex
+    align-items: center
+    gap: 1rem
+    padding: 1.15rem 1.4rem
+    margin-bottom: 1rem
+    text-decoration: none
+    color: inherit
+    transition: transform 0.3s ease, box-shadow 0.3s ease
+  .editor-card:hover
+    transform: translateY(-3px)
+    box-shadow: unquote('0 16px 40px -20px color-mix(in oklch, var(--primary) 60%, transparent)')
+  .editor-icon
+    display: flex
+    align-items: center
+    justify-content: center
+    width: 52px
+    height: 52px
+    border-radius: 12px
+    background: unquote('color-mix(in oklch, var(--primary) 14%, transparent)')
+    color: var(--primary)
+    flex-shrink: 0
+    transition: transform 0.3s ease
+  .editor-card:hover .editor-icon
+    transform: rotate(-6deg) scale(1.05)
+  .editor-text
+    flex: 1
+    min-width: 0
+  .editor-label
+    font-family: 'JetBrains Mono Variable', ui-monospace, monospace
+    font-size: 0.68rem
+    letter-spacing: 0.12em
+    text-transform: uppercase
+    color: var(--primary)
+  .editor-title
+    font-size: 1.1rem
+    font-weight: 700
+    margin: 0.1rem 0 0.15rem
+  .editor-sub
+    font-size: 0.82rem
+    margin: 0
+    color: rgba(128, 128, 128, 0.9)
+  .editor-cta
+    display: inline-flex
+    align-items: center
+    gap: 0.45rem
+    padding: 0.6rem 1.1rem
+    border-radius: 8px
+    background: var(--primary)
+    color: white
+    font-size: 0.88rem
+    font-weight: 600
+    flex-shrink: 0
+    transition: gap 0.25s ease
+  .editor-card:hover .editor-cta
+    gap: 0.7rem
 
-  .hero-section::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--primary), transparent);
-  }
+  // Gallery section
+  .gallery-section
+    padding: 1.6rem 1.5rem 1.8rem
 
-  .hero-content {
-    position: relative;
-    z-index: 1;
-  }
+  .section-head
+    display: flex
+    align-items: center
+    gap: 0.7rem
+    margin-bottom: 1.4rem
+  .sh-caret
+    font-family: 'JetBrains Mono Variable', ui-monospace, monospace
+    color: var(--primary)
+    font-weight: 700
+    font-size: 1.2rem
+    opacity: 0.75
+    animation: sh-blink 1.2s steps(1) infinite
+  @keyframes sh-blink
+    0%, 49%
+      opacity: 0.75
+    50%, 100%
+      opacity: 0
+  .sh-title
+    font-family: 'JetBrains Mono Variable', ui-monospace, monospace
+    font-size: 1.15rem
+    font-weight: 700
+    letter-spacing: -0.01em
+  .sh-rule
+    flex: 1
+    height: 1px
+    background: unquote('linear-gradient(to right, color-mix(in oklch, var(--primary) 50%, transparent), transparent)')
 
-  .hero-title {
-    font-size: 2rem;
-    font-weight: 700;
-    margin: 0 0 1rem 0;
-    color: var(--primary);
-    letter-spacing: -0.02em;
-  }
+  .art-gallery
+    display: grid
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr))
+    gap: 1.25rem
 
-  .hero-description {
-    font-size: 0.95rem;
-    line-height: 1.7;
-    margin: 0;
-    opacity: 0.7;
-  }
+  // Artwork card
+  .artwork-card
+    display: block
+    position: relative
+    background: var(--btn-regular-bg)
+    border-radius: 14px
+    overflow: hidden
+    text-decoration: none
+    color: inherit
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease
+  .artwork-card:hover
+    transform: translateY(-5px)
+    box-shadow: unquote('0 20px 44px -20px color-mix(in oklch, var(--primary) 60%, transparent)')
+  .artwork-card:hover .card-overlay
+    opacity: 1
+  .artwork-card:hover .card-accent
+    transform: scaleX(1)
 
-  /* Editor Section */
-  .editor-section {
-    margin-bottom: 1.5rem;
-  }
+  .card-image-wrapper
+    position: relative
+    aspect-ratio: 1
+    overflow: hidden
+  .artwork-preview
+    width: 100%
+    height: 100%
+    object-fit: cover
+    transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)
+  .artwork-card:hover .artwork-preview
+    transform: scale(1.06)
 
-  .editor-card {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1.25rem 1.5rem;
-    background: var(--card-bg);
-    border-radius: var(--radius-large);
-    border: 1px solid var(--line-color);
-    transition: all 0.2s ease;
-  }
+  .card-overlay
+    position: absolute
+    inset: 0
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 50%)
+    display: flex
+    align-items: flex-end
+    justify-content: center
+    padding-bottom: 1rem
+    opacity: 0
+    transition: opacity 0.3s ease
+  .view-text
+    font-size: 0.82rem
+    font-weight: 600
+    color: white
+    padding: 0.4rem 1rem
+    background: var(--primary)
+    border-radius: 20px
 
-  .editor-card:hover {
-    border-color: var(--primary);
-  }
+  .card-info
+    display: flex
+    flex-direction: column
+    gap: 0.25rem
+    padding: 0.85rem 1rem
+  .artwork-name
+    font-size: 0.92rem
+    font-weight: 600
+    text-transform: capitalize
+    white-space: nowrap
+    overflow: hidden
+    text-overflow: ellipsis
+  .artwork-date
+    font-family: 'JetBrains Mono Variable', ui-monospace, monospace
+    font-size: 0.73rem
+    color: rgba(140, 140, 140, 0.85)
 
-  .editor-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 56px;
-    height: 56px;
-    background: var(--btn-regular-bg);
-    border-radius: 12px;
-    color: var(--primary);
-    flex-shrink: 0;
-  }
+  .card-accent
+    position: absolute
+    bottom: 0
+    left: 0
+    right: 0
+    height: 3px
+    background: var(--primary)
+    transform: scaleX(0)
+    transform-origin: left
+    transition: transform 0.3s ease
 
-  .editor-text {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .editor-text h3 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin: 0 0 0.25rem 0;
-  }
-
-  .editor-text p {
-    font-size: 0.85rem;
-    margin: 0;
-    opacity: 0.6;
-  }
-
-  .editor-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.25rem;
-    background: var(--primary);
-    color: white;
-    text-decoration: none;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: all 0.2s ease;
-    flex-shrink: 0;
-  }
-
-  .editor-link:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
-  }
-
-  /* Gallery Section */
-  .gallery-section {
-    background: var(--card-bg);
-    border-radius: var(--radius-large);
-    padding: 1.5rem;
-  }
-
-  .section-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--line-color);
-  }
-
-  .section-header h2 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0;
-  }
-
-  .work-count {
-    font-size: 0.85rem;
-    opacity: 0.5;
-  }
-
-  .art-gallery {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 1.25rem;
-  }
-
-  /* Artwork Card */
-  .artwork-card {
-    display: block;
-    position: relative;
-    background: var(--btn-regular-bg);
-    border-radius: 12px;
-    overflow: hidden;
-    text-decoration: none;
-    color: inherit;
-    transition: all 0.3s ease;
-    animation: fadeInUp 0.4s ease forwards;
-    animation-delay: var(--delay);
-    opacity: 0;
-  }
-
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(16px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .artwork-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
-  }
-
-  .artwork-card:hover .card-overlay {
-    opacity: 1;
-  }
-
-  .artwork-card:hover .card-accent {
-    transform: scaleX(1);
-  }
-
-  .card-image-wrapper {
-    position: relative;
-    aspect-ratio: 1;
-    overflow: hidden;
-  }
-
-  .artwork-preview {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.4s ease;
-  }
-
-  .artwork-card:hover .artwork-preview {
-    transform: scale(1.05);
-  }
-
-  .card-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 50%);
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    padding-bottom: 1rem;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-
-  .view-text {
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: white;
-    padding: 0.5rem 1rem;
-    background: var(--primary);
-    border-radius: 20px;
-  }
-
-  .card-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    padding: 0.875rem 1rem;
-  }
-
-  .artwork-name {
-    font-size: 0.9rem;
-    font-weight: 500;
-    text-transform: capitalize;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .artwork-date {
-    font-size: 0.75rem;
-    opacity: 0.5;
-  }
-
-  .card-accent {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: var(--primary);
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform 0.3s ease;
-  }
-
-  /* Responsive */
-  @media (max-width: 640px) {
-    .hero-section {
-      padding: 2rem 1.5rem;
-    }
-
-    .hero-title {
-      font-size: 1.5rem;
-    }
-
-    .editor-card {
-      flex-wrap: wrap;
-    }
-
-    .editor-link {
-      width: 100%;
-      justify-content: center;
-    }
-
-    .art-gallery {
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 1rem;
-    }
-
-    .gallery-section {
-      padding: 1rem;
-    }
-  }
+  @media (max-width: 640px)
+    .editor-card
+      flex-wrap: wrap
+    .editor-cta
+      width: 100%
+      justify-content: center
+    .art-gallery
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr))
+      gap: 1rem
+    .gallery-section
+      padding: 1.2rem 1rem 1.4rem
 </style>

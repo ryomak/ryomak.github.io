@@ -20,8 +20,7 @@ const enableBanner = siteConfig.banner.enable
 ---
 
 <Layout title={title} banner={banner} description={description} slug={slug}>
-<div class="max-w-[var(--page-width)] min-h-screen grid grid-cols-[17.5rem_auto] grid-rows-[auto_auto_1fr_auto] lg:grid-rows-[auto_1fr_auto]
-    mx-auto gap-4 relative px-0 md:px-4"
+<div id="main-grid" class:list={["max-w-[var(--page-width)] min-h-screen grid grid-cols-[17.5rem_auto] grid-rows-[auto_auto_1fr_auto] lg:grid-rows-[auto_1fr_auto] mx-auto gap-4 relative px-0 md:px-4", {"is-home-layout": isHomePage}]}
 >
     <div id="top-row" class="col-span-2 grid-rows-1 z-50 onload-animation" class:list={[""]}>
         <div class="absolute h-8 left-0 right-0 -top-8 bg-[var(--card-bg)] transition"></div> <!-- used for onload animation -->
@@ -44,3 +43,134 @@ const enableBanner = siteConfig.banner.enable
     <BackToTop></BackToTop>
 </div>
 </Layout>
+
+<style is:global>
+    /* ===== Margiela palette, site-wide =====
+       Ivory raw-canvas + ink, monochrome. Overrides the theme's green so every
+       page (home, blog, works, archive, art) shares one deconstructed language. */
+    :root {
+        --primary: #262521 !important;
+        --page-bg: #f2efe9 !important;
+        --card-bg: #fbfaf6 !important;
+        --deep-text: #1a1a18 !important;
+        --title-active: #000 !important;
+        --line-color: rgba(25, 25, 25, 0.16) !important;
+        --meta-divider: rgba(25, 25, 25, 0.22) !important;
+        --btn-regular-bg: #ece9e1 !important;
+        --btn-regular-bg-hover: #e4e0d5 !important;
+        --btn-regular-bg-active: #dcd7c9 !important;
+        --btn-content: #45423a !important;
+        --btn-plain-bg-hover: #ece9e1 !important;
+        --btn-plain-bg-active: #e4e0d5 !important;
+        --btn-card-bg-hover: #f3f1ea !important;
+        --btn-card-bg-active: #e9e6dd !important;
+        --selection-bg: #e2ddcf !important;
+        --float-panel-bg: #fbfaf6 !important;
+    }
+    html.dark {
+        --primary: #ece7dc !important;
+        --page-bg: #100f0e !important;
+        --card-bg: #1a1917 !important;
+        --deep-text: #ece7dc !important;
+        --title-active: #fff !important;
+        --line-color: rgba(236, 231, 220, 0.16) !important;
+        --meta-divider: rgba(236, 231, 220, 0.22) !important;
+        --btn-regular-bg: #201f1c !important;
+        --btn-regular-bg-hover: #272621 !important;
+        --btn-regular-bg-active: #2e2c27 !important;
+        --btn-content: #cfcabf !important;
+        --btn-plain-bg-hover: #201f1c !important;
+        --btn-plain-bg-active: #272621 !important;
+        --btn-card-bg-hover: #201f1c !important;
+        --btn-card-bg-active: #272621 !important;
+        --selection-bg: #34322c !important;
+        --float-panel-bg: #1a1917 !important;
+    }
+
+    /* Home is a full-width portfolio: hide the blog sidebar and span content.
+       Toggled by class (not by SSR conditionals) so it survives swup navigation,
+       which only swaps <main> and keeps this shell mounted. */
+    #main-grid.is-home-layout {
+        grid-template-columns: 1fr;
+        max-width: none;
+        padding-left: clamp(1.25rem, 5vw, 6rem);
+        padding-right: clamp(1.25rem, 5vw, 6rem);
+    }
+    #main-grid.is-home-layout #sidebar {
+        display: none;
+    }
+    #main-grid.is-home-layout #content-wrapper {
+        grid-column: 1 / -1;
+        overflow: visible; /* don't clip the hero animation / reveal transforms */
+    }
+
+    /* Shared scroll-reveal used across home, blog, works and archive. */
+    .reveal {
+        opacity: 0;
+        transform: translateY(18px);
+        transition:
+            opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+            transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        transition-delay: var(--d, 0ms);
+        will-change: opacity, transform;
+    }
+    .reveal.is-visible {
+        opacity: 1;
+        transform: none;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .reveal {
+            opacity: 1;
+            transform: none;
+            transition: none;
+        }
+    }
+</style>
+
+<script>
+    // Keep the home/full-width layout in sync across swup navigations.
+    function applyHomeLayout() {
+        const grid = document.getElementById('main-grid')
+        if (!grid) return
+        const path = location.pathname.replace(/\/+$/, '')
+        const isHome = path === ''
+        grid.classList.toggle('is-home-layout', isHome)
+        // Margiela theme applies to the home page only; reverts on navigation.
+        document.documentElement.classList.toggle('home-margiela', isHome)
+    }
+    // Reveal-on-scroll for any `.reveal` element on the page.
+    function initReveal() {
+        const items = document.querySelectorAll('.reveal:not(.is-visible)')
+        if (!items.length) return
+        if (!('IntersectionObserver' in window)) {
+            items.forEach(el => el.classList.add('is-visible'))
+            return
+        }
+        const io = new IntersectionObserver(
+            (entries, obs) => {
+                for (const entry of entries) {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible')
+                        obs.unobserve(entry.target)
+                    }
+                }
+            },
+            { threshold: 0.12, rootMargin: '0px 0px -6% 0px' },
+        )
+        items.forEach(el => io.observe(el))
+    }
+
+    function onPage() {
+        applyHomeLayout()
+        initReveal()
+    }
+
+    onPage()
+    const bindSwup = () => {
+        const swup = (window as any).swup
+        if (swup?.hooks) swup.hooks.on('page:view', onPage)
+    }
+    if ((window as any).swup?.hooks) bindSwup()
+    else document.addEventListener('swup:enable', bindSwup)
+    document.addEventListener('astro:page-load', onPage)
+</script>
