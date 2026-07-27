@@ -10,9 +10,11 @@ import remarkMath from "remark-math";
 import remarkDirective from "remark-directive"; /* Handle directives */
 import rehypeComponents from "rehype-components"; /* Render the custom directive content */
 import { remarkReadingTime } from "./src/plugins/remark-reading-time.mjs";
+import { remarkSlides } from "./src/plugins/remark-slides.mjs";
 import { parseDirectiveNode } from "./src/plugins/remark-directive-rehype.js";
 import { AdmonitionComponent } from "./src/plugins/rehype-component-admonition.mjs";
 import { GithubCardComponent } from "./src/plugins/rehype-component-github-card.mjs";
+import { SlideEmbedComponent } from "./src/plugins/rehype-component-slide-embed.mjs";
 import svelte from "@astrojs/svelte";
 import swup from '@swup/astro';
 import sitemap from '@astrojs/sitemap';
@@ -43,6 +45,9 @@ export default defineConfig({
   trailingSlash: 'always',
   integrations: [tailwind(), swup({
     theme: false,
+    // A deck is a standalone document (its own <html>, no site shell), so swup
+    // must not swap it into the current page — those links get a full load.
+    linkSelector: 'a[href]:not([data-no-swup]):not([href^="/slides/"])',
     animationClass: 'transition-',
     containers: ['main'],
     smoothScrolling: true,
@@ -61,10 +66,11 @@ export default defineConfig({
     Image: false
   }), svelte(), sitemap(), customToc(), react()],
   markdown: {
-    remarkPlugins: [remarkMath, remarkReadingTime, remarkDirective, parseDirectiveNode, remarkLinkCard],
+    remarkPlugins: [remarkMath, remarkReadingTime, remarkDirective, parseDirectiveNode, remarkLinkCard, remarkSlides],
     rehypePlugins: [rehypeKatex, rehypeSlug, [rehypeComponents, {
       components: {
         github: GithubCardComponent,
+        slide: SlideEmbedComponent,
         note: (x, y) => AdmonitionComponent(x, y, "note"),
         tip: (x, y) => AdmonitionComponent(x, y, "tip"),
         important: (x, y) => AdmonitionComponent(x, y, "important"),

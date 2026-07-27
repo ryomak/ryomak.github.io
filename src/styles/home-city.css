@@ -1,0 +1,456 @@
+/* Zanarkand top page.
+
+   Two layouts share one set of markup:
+
+     .city              stacked sections, in normal document flow. This is what
+                        the server renders, what crawlers read, and what runs
+                        when WebGL is unavailable or motion is reduced.
+
+     stage mode         the canvas, the panels and the chapter index are lifted
+                        out to <body> and pinned to the viewport; a scroller of
+                        our own supplies the scroll distance. The page itself
+                        never scrolls.
+
+   Stage mode is entered from script (src/scripts/home-city.ts), which is also
+   why its selectors hang off <html class="city-locked"> rather than off .city —
+   by then the elements no longer live inside .city. */
+
+html.home-city {
+  --city-ink: #eef4f8;
+  --city-muted: #8fa6b5;
+  --city-line: rgba(200, 226, 240, 0.24);
+  --city-accent: #7fe6ff;
+  --city-bg: #05080d;
+  background-color: var(--city-bg) !important;
+  --card-bg: transparent !important;
+  --page-bg: #05080d !important;
+  --primary: #eef4f8 !important;
+  --deep-text: #eef4f8 !important;
+  --title-active: #ffffff !important;
+  --line-color: rgba(200, 226, 240, 0.18) !important;
+  --btn-content: #cfe0ea !important;
+  --float-panel-bg: #0b131b !important;
+
+  /* The section components (Now / Writing / Skills / ArtLink) are reused
+     verbatim from the previous top page; re-pointing their tokens at the night
+     palette is all that was needed to move them onto the stage. */
+  --mg-bg: var(--city-bg);
+  --mg-ink: var(--city-ink);
+  --mg-muted: var(--city-muted);
+  --mg-line: var(--city-line);
+  --mg-tag: #0b131b;
+}
+
+html.home-city #main-grid {
+  background: transparent;
+}
+html.home-city #top-row {
+  position: relative;
+  z-index: 60;
+}
+
+/* ---- stage mode: the document itself stops scrolling --------------------- */
+html.city-locked,
+html.city-locked body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+/* the shell's footer has nowhere to go on a one-screen page */
+html.city-locked #footer,
+html.city-locked #back-to-top-btn {
+  display: none;
+}
+/* .city is left behind in the grid once its children are lifted out */
+html.city-locked .city {
+  min-height: 0;
+}
+
+.city {
+  position: relative;
+  color: var(--city-ink);
+}
+
+/* ------------------------------------------------------------- the stage */
+.city-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+body > .city-stage {
+  position: fixed;
+}
+.city-stage canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  opacity: 0;
+  transition: opacity 1.6s ease;
+}
+/* before the scene owns its own size, don't let the canvas stretch */
+.city:not(.is-stage) .city-stage canvas {
+  width: 100%;
+  height: 100%;
+}
+.city.is-loaded .city-stage canvas,
+body > .city-stage.is-loaded canvas {
+  opacity: 1;
+}
+.city-stage-fallback {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(90% 60% at 50% 82%, rgba(20, 92, 118, 0.5), transparent 70%),
+    radial-gradient(60% 40% at 22% 18%, rgba(120, 170, 200, 0.16), transparent 70%),
+    linear-gradient(180deg, #04070c 0%, #060d15 55%, #08161f 100%);
+  transition: opacity 1.4s ease;
+}
+.city-stage-fallback::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 34%;
+  background: linear-gradient(180deg, transparent, rgba(127, 230, 255, 0.1));
+  animation: city-tide 9s ease-in-out infinite alternate;
+}
+@keyframes city-tide {
+  from {
+    opacity: 0.5;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-6px);
+  }
+}
+.city.is-loaded .city-stage-fallback {
+  opacity: 0;
+}
+
+/* ---------------------------------------------------------- the scroller */
+.city-scroller {
+  color: var(--city-ink);
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  outline: none;
+  /* the viewport height the script measured; falls back to the dynamic unit */
+  --city-vh: 100dvh;
+}
+.city-scroller::-webkit-scrollbar {
+  display: none;
+}
+.city-track {
+  height: calc(var(--city-scroll, 620vh) - var(--city-vh));
+}
+
+/* ---------------------------------------------------------- the panels */
+.city-panels {
+  position: relative;
+  z-index: 2;
+  /* stage mode lifts the panels out of .city and into <body>, so the colour has
+     to travel with them rather than being inherited from .city */
+  color: var(--city-ink);
+}
+.city-scroller .city-panels {
+  position: sticky;
+  top: 0;
+  height: var(--city-vh);
+  pointer-events: none;
+}
+
+.city-sec {
+  position: relative;
+  padding: 5rem 0;
+}
+.city-scroller .city-sec {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  width: min(36rem, 44vw);
+  padding: 0;
+  opacity: 0;
+  will-change: opacity, transform;
+  /* the city behind the text is bright and moving, so the type carries its own
+     shadow on top of the scrim */
+  text-shadow: 0 1px 2px rgba(2, 6, 10, 0.85), 0 2px 22px rgba(2, 6, 10, 0.75);
+}
+.city-scroller .city-sec[data-side='left'] {
+  left: clamp(1.5rem, 6vw, 7rem);
+}
+.city-scroller .city-sec[data-side='right'] {
+  right: clamp(4.2rem, 8vw, 9.5rem);
+  text-align: right;
+}
+.city-scroller .city-sec[data-side='right'] .city-chap {
+  justify-content: flex-end;
+}
+/* a soft scrim so text stays readable over the brightest parts of the city */
+.city-scroller .city-sec::before {
+  content: '';
+  position: absolute;
+  inset: -3rem -4rem;
+  z-index: -1;
+  background: radial-gradient(62% 62% at 38% 50%, rgba(4, 8, 13, 0.92), rgba(4, 8, 13, 0.55) 62%, transparent 82%);
+  pointer-events: none;
+}
+.city-scroller .city-sec[data-side='right']::before {
+  background: radial-gradient(62% 62% at 62% 50%, rgba(4, 8, 13, 0.92), rgba(4, 8, 13, 0.55) 62%, transparent 82%);
+}
+
+.city-chap {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.6rem;
+}
+.city-chap-num {
+  font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  color: var(--city-accent);
+}
+.city-chap-line {
+  width: 2.5rem;
+  height: 1px;
+  background: var(--city-line);
+}
+.city-chap-name {
+  font-size: 1.4rem;
+  font-weight: 300;
+  color: var(--city-ink);
+}
+
+.city-spacer {
+  display: none;
+}
+
+/* ------------------------------------------------------ chapter index */
+.city-index {
+  position: fixed;
+  top: 50%;
+  translate: 0 -50%;
+  right: 1.1rem;
+  z-index: 40;
+  padding: 0.6rem 0.5rem;
+  font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.city-index.is-visible {
+  opacity: 1;
+}
+.city-index-head {
+  display: none;
+}
+.city-index ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.city-index li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  height: 2rem;
+  cursor: pointer;
+  color: var(--city-muted);
+  transition: color 0.3s ease;
+}
+.city-index li:hover {
+  color: var(--city-ink);
+}
+/* the label only unfolds on hover, so the rail stays out of the layout */
+.city-index .nm {
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 0;
+  transition: max-width 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
+}
+.city-index li:hover .nm,
+.city-index li.is-current .nm {
+  max-width: 5rem;
+  opacity: 1;
+}
+.city-index li.is-current {
+  color: var(--city-accent);
+}
+.city-index .n {
+  position: relative;
+  order: 2;
+  font-size: 0.66rem;
+  width: 1.3rem;
+  text-align: right;
+}
+.city-index .n::after {
+  content: '';
+  position: absolute;
+  right: -0.5rem;
+  top: 50%;
+  width: 0.75rem;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.35;
+  transform: scaleX(0.45);
+  transform-origin: right;
+  transition: opacity 0.3s ease, transform 0.35s ease;
+}
+.city-index li.is-current .n::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+.city-index .nm {
+  order: 1;
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+}
+
+/* -------------------------------------------------------- scroll hint */
+.city-hint {
+  display: none;
+}
+body > .city-hint {
+  position: fixed;
+  left: 50%;
+  bottom: calc(1.6rem + env(safe-area-inset-bottom, 0px));
+  translate: -50% 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.3em;
+  color: var(--city-muted);
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+html.city-scrolled body > .city-hint {
+  opacity: 0;
+}
+.city-hint i {
+  display: block;
+  width: 3rem;
+  height: 1px;
+  background: var(--city-line);
+  position: relative;
+  overflow: hidden;
+}
+.city-hint i::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: var(--city-accent);
+  animation: city-scroll 2s ease-in-out infinite;
+}
+@keyframes city-scroll {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+/* ------------------------------------------------------------- phones */
+@media (max-width: 900px) {
+  .city-index {
+    top: auto;
+    bottom: calc(1.2rem + env(safe-area-inset-bottom, 0px));
+    right: 0.9rem;
+    width: auto;
+    padding: 0.4rem 0.5rem;
+    display: flex;
+    gap: 0.35rem;
+  }
+  .city-index-head {
+    display: none;
+  }
+  .city-index ul {
+    display: flex;
+    gap: 0.25rem;
+  }
+  .city-index li {
+    height: auto;
+    padding: 0.3rem;
+  }
+  .city-index .nm {
+    display: none;
+  }
+  .city-index .n::after {
+    display: none;
+  }
+
+  /* panels sit low so the city stays visible above the text */
+  .city-scroller .city-sec,
+  .city-scroller .city-sec[data-side='right'] {
+    top: auto;
+    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    translate: none;
+    width: auto;
+    left: 1.15rem;
+    right: 1.15rem;
+    text-align: left;
+    max-height: 64svh;
+    overflow: hidden;
+  }
+  .city-scroller .city-sec[data-side='right'] .city-chap {
+    justify-content: flex-start;
+  }
+  .city-scroller .city-sec::before,
+  .city-scroller .city-sec[data-side='right']::before {
+    inset: -3rem -1.6rem -6rem;
+    background: linear-gradient(180deg, transparent, rgba(4, 8, 13, 0.92) 22%, rgba(4, 8, 13, 0.98));
+  }
+  /* the reused row layouts are tuned for a wide column; tighten them here */
+  .city-scroller .city-sec .mg-row {
+    grid-template-columns: 1fr auto;
+    gap: 0.25rem 0.6rem;
+    padding: 0.75rem 0;
+  }
+  .city-scroller .city-sec .mg-row-title {
+    font-size: 0.88rem;
+  }
+  .city-scroller .city-sec .mg-focus li {
+    font-size: 1.25rem;
+    padding: 0.6rem 0.2rem;
+  }
+  .city-scroller .city-sec .mg-now-lead {
+    font-size: 1rem;
+  }
+  .city-chap {
+    margin-bottom: 1rem;
+  }
+  .city-chap-name {
+    font-size: 1.15rem;
+  }
+  body > .city-hint {
+    bottom: calc(3.6rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* very short viewports (landscape phones) */
+@media (max-height: 520px) {
+  .city-scroller .city-sec {
+    max-height: 74svh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .city-stage-fallback::after,
+  .city-hint i::after {
+    animation: none;
+  }
+}

@@ -1,0 +1,16 @@
+---
+// The WebGL stage for the top page. Purely decorative — every word on the page
+// lives in the sibling panels — so it is hidden from assistive tech. Until (or
+// unless) the scene loads, the gradient underneath stands in for it.
+//
+// At boot the script lifts both of these elements out to <body>; see
+// src/scripts/home-city.ts for why.
+---
+<div class="city-stage" data-city-stage aria-hidden="true">
+  <div class="city-stage-fallback"></div>
+  <canvas data-city-canvas></canvas>
+</div>
+
+<div class="city-hint" data-city-hint aria-hidden="true">
+  <span>SCROLL</span><i></i>
+</div>

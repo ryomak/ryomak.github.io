@@ -194,6 +194,55 @@ const className = Astro.props.class
       margin-right: auto
       max-width: 100%
 
+    .slide-embed
+      margin: 2rem 0
+      padding: 0
+      width: 100%
+      border-radius: 0.9rem
+      overflow: hidden
+      background: var(--card-bg)
+      box-shadow: rgba(0, 0, 0, 0.2) 0px 5px 40px
+      .slide-embed-frame
+        position: relative
+        aspect-ratio: 16 / 9
+        width: 100%
+        background: #100f0e
+      iframe
+        display: block
+        width: 100%
+        height: 100%
+        border: 0
+        border-radius: 0
+      .slide-embed-caption
+        display: flex
+        align-items: center
+        justify-content: space-between
+        gap: 1rem
+        margin: 0
+        padding: 0.75rem 0.9rem
+        border-top: 1px solid var(--line-divider)
+        color: var(--tw-prose-captions)
+        font-size: 0.82rem
+        line-height: 1.4
+      .slide-embed-caption span
+        min-width: 0
+        overflow: hidden
+        white-space: nowrap
+        text-overflow: ellipsis
+      .slide-embed-caption a
+        flex: 0 0 auto
+        color: var(--primary)
+        font-weight: 700
+        text-decoration: none
+      @media (max-width: 640px)
+        border-radius: 0.75rem
+        .slide-embed-caption
+          align-items: flex-start
+          flex-direction: column
+          gap: 0.35rem
+        .slide-embed-caption span
+          white-space: normal
+
     a.card-github
       display: block
       position: relative

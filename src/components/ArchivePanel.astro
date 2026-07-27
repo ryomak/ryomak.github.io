@@ -1,4 +1,5 @@
 ---
+import { getCollection } from 'astro:content'
 import { getSortedPosts } from '../utils/content-utils'
 import { getPostUrlBySlug } from '../utils/url-utils'
 import { i18n } from '../i18n/translation'
@@ -32,25 +33,59 @@ if (Array.isArray(categories) && categories.length > 0) {
   )
 }
 
+type Entry = {
+  date: Date
+  title: string
+  url: string
+  tags: string[]
+  /** shown in place of tags for anything that isn't a post */
+  kind?: string
+}
+
+const entries: Entry[] = posts.map(post => ({
+  date: post.data.published,
+  title: post.data.title,
+  url: post.data.external ? post.data.link : getPostUrlBySlug(post.slug),
+  tags: post.data.tags ?? [],
+}))
+
+// Decks belong on the timeline too. They carry no tags or category, so they
+// only show up on the unfiltered archive — a tag/category view would otherwise
+// list entries that don't match the filter.
+const isFiltered =
+  (Array.isArray(tags) && tags.length > 0) ||
+  (Array.isArray(categories) && categories.length > 0)
+
+if (!isFiltered) {
+  const decks = await getCollection('slides', ({ data }) =>
+    import.meta.env.DEV ? true : !data.draft,
+  )
+  entries.push(
+    ...decks.map(deck => ({
+      date: deck.data.published,
+      title: deck.data.title,
+      url: `/slides/${deck.slug}/`,
+      tags: [],
+      kind: 'SLIDES',
+    })),
+  )
+}
+
 const groups = (function () {
-  const groupedPosts = posts.reduce((grouped, post) => {
-    const year = post.data.published.getFullYear()
-    if (!grouped[year]) {
-      grouped[year] = []
-    }
-    grouped[year].push(post)
-    return grouped
-  }, {})
+  const grouped = entries.reduce((acc, entry) => {
+    const year = entry.date.getFullYear()
+    if (!acc[year]) acc[year] = []
+    acc[year].push(entry)
+    return acc
+  }, {} as Record<number, Entry[]>)
 
-  // convert the object to an array
-  const groupedPostsArray = Object.keys(groupedPosts).map(key => ({
-    year: key,
-    posts: groupedPosts[key],
-  }))
-
-  // sort years by latest first
-  groupedPostsArray.sort((a, b) => b.year - a.year)
-  return groupedPostsArray
+  return Object.keys(grouped)
+    .map(key => ({
+      year: key,
+      // newest first inside the year, since slides were merged in afterwards
+      entries: grouped[key].sort((a, b) => b.date.valueOf() - a.date.valueOf()),
+    }))
+    .sort((a, b) => Number(b.year) - Number(a.year))
 })()
 
 function formatDate(date: Date) {
@@ -63,9 +98,6 @@ function formatTag(tag: string[]) {
   return tag.map(t => `#${t}`).join(' ')
 }
 
-const generateUrl = post => {
-  return post.data.external ? post.data.link : getPostUrlBySlug(post.slug)
-}
 ---
 
 <div class="card-base px-6 md:px-10 py-8">
@@ -74,16 +106,18 @@ const generateUrl = post => {
             <section class="arc-group reveal">
                 <div class="arc-year-row">
                     <span class="arc-year">{group.year}</span>
-                    <span class="arc-year-count">{group.posts.length} {i18n(I18nKey.postsCount)}</span>
+                    <span class="arc-year-count">{group.entries.length} {i18n(I18nKey.postsCount)}</span>
                     <span class="arc-year-rule"></span>
                 </div>
                 <div class="arc-list">
-                    {group.posts.map(post => (
-                        <a href={generateUrl(post)} aria-label={post.data.title} class="arc-row group">
-                            <time class="arc-date">{formatDate(post.data.published)}</time>
+                    {group.entries.map(entry => (
+                        <a href={entry.url} aria-label={entry.title} data-no-swup={entry.kind ? '' : undefined} class:list={['arc-row group', { 'is-slides': entry.kind === 'SLIDES' }]}>
+                            <time class="arc-date">{formatDate(entry.date)}</time>
                             <span class="arc-node"><span class="arc-dot"></span></span>
-                            <span class="arc-title">{post.data.title}</span>
-                            <span class="arc-tags">{formatTag(post.data.tags)}</span>
+                            <span class="arc-title">{entry.title}</span>
+                            {entry.kind
+                              ? <span class="arc-kind">{entry.kind}</span>
+                              : <span class="arc-tags">{formatTag(entry.tags)}</span>}
                         </a>
                     ))}
                 </div>
@@ -185,6 +219,19 @@ const generateUrl = post => {
     transform: translateX(4px)
     color: var(--primary)
 
+  // decks get a label instead of tags, and a filled dot on the timeline
+  .arc-kind
+    font-family: 'JetBrains Mono Variable', ui-monospace, monospace
+    font-size: 0.62rem
+    letter-spacing: 0.1em
+    color: var(--primary)
+    border: 1px solid unquote('color-mix(in oklch, var(--primary) 35%, transparent)')
+    border-radius: 999px
+    padding: 0.08rem 0.5rem
+    white-space: nowrap
+  .arc-row.is-slides .arc-dot
+    background: var(--primary)
+
   .arc-tags
     font-family: 'JetBrains Mono Variable', ui-monospace, monospace
     font-size: 0.74rem
@@ -195,6 +242,8 @@ const generateUrl = post => {
     max-width: 12rem
   @media (max-width: 768px)
     .arc-tags
+      display: none
+    .arc-kind
       display: none
     .arc-row
       grid-template-columns: 3rem 1.4rem 1fr

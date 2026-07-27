@@ -71,7 +71,7 @@ const favicons: Favicon[] =
 ---
 
 <!DOCTYPE html>
-<html lang="en" isHome={isHomePage} pathname={testPathName} class="bg-[var(--page-bg)] transition text-[14px] md:text-[16px]">
+<html lang="en" isHome={isHomePage} pathname={testPathName} class="dark bg-[var(--page-bg)] transition text-[14px] md:text-[16px]">
 	<head>
 
 		<title>{pageTitle}</title>
@@ -245,15 +245,10 @@ setClickOutsideToClose("nav-menu-panel", ["nav-menu-panel", "nav-menu-switch"])
 setClickOutsideToClose("search-panel", ["search-panel", "search-bar", "search-switch"])
 
 
+// The site is dark-only: there is no light palette and no theme switch.
 function loadTheme() {
-	if (localStorage.theme === 'dark' || (!('theme' in localStorage) &&
-		window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-		document.documentElement.classList.add('dark');
-		localStorage.theme = 'dark';
-	} else {
-		document.documentElement.classList.remove('dark');
-		localStorage.theme = 'light';
-	}
+	document.documentElement.classList.add('dark');
+	localStorage.theme = 'dark';
 }
 
 function loadHue() {
@@ -310,6 +305,11 @@ function init() {
 
 /* Load settings when entering the site */
 init();
+
+window.addEventListener('pageshow', () => {
+	document.documentElement.classList.remove('is-changing', 'is-rendering', 'is-animating', 'is-leaving')
+	init()
+})
 
 /* Load settings before swapping */
 /* astro:after-swap event happened before swap animation */
