@@ -132,7 +132,6 @@ body > .city-stage.is-loaded canvas {
 
 /* ---------------------------------------------------------- the scroller */
 .city-scroller {
-  color: var(--city-ink);
   position: fixed;
   inset: 0;
   z-index: 10;
@@ -156,9 +155,6 @@ body > .city-stage.is-loaded canvas {
 .city-panels {
   position: relative;
   z-index: 2;
-  /* stage mode lifts the panels out of .city and into <body>, so the colour has
-     to travel with them rather than being inherited from .city */
-  color: var(--city-ink);
 }
 .city-scroller .city-panels {
   position: sticky;
@@ -181,7 +177,7 @@ body > .city-stage.is-loaded canvas {
   will-change: opacity, transform;
   /* the city behind the text is bright and moving, so the type carries its own
      shadow on top of the scrim */
-  text-shadow: 0 1px 2px rgba(2, 6, 10, 0.85), 0 2px 22px rgba(2, 6, 10, 0.75);
+  text-shadow: 0 1px 2px rgba(2, 6, 10, 0.95), 0 2px 10px rgba(2, 6, 10, 0.9), 0 4px 30px rgba(2, 6, 10, 0.8);
 }
 .city-scroller .city-sec[data-side='left'] {
   left: clamp(1.5rem, 6vw, 7rem);
@@ -193,17 +189,30 @@ body > .city-stage.is-loaded canvas {
 .city-scroller .city-sec[data-side='right'] .city-chap {
   justify-content: flex-end;
 }
-/* a soft scrim so text stays readable over the brightest parts of the city */
+/* A scrim so the text stays readable over the brightest parts of the city.
+   Two layers: a wide, very soft pool that reaches past the words, and a tight
+   near-opaque core behind them. One gradient alone had to choose between
+   being visible as a dark blob and being too weak over the lit stands. The
+   blur pushes the city itself out of focus behind the words, which does more
+   for legibility than any amount of darkening. */
 .city-scroller .city-sec::before {
   content: '';
   position: absolute;
-  inset: -3rem -4rem;
+  inset: -4.5rem -6rem;
   z-index: -1;
-  background: radial-gradient(62% 62% at 38% 50%, rgba(4, 8, 13, 0.92), rgba(4, 8, 13, 0.55) 62%, transparent 82%);
+  background:
+    radial-gradient(52% 54% at 34% 50%, rgba(3, 6, 11, 0.90), rgba(3, 6, 11, 0.66) 48%, transparent 74%),
+    radial-gradient(78% 76% at 34% 50%, rgba(3, 6, 11, 0.52), transparent 80%);
+  backdrop-filter: blur(7px) saturate(0.85);
+  -webkit-backdrop-filter: blur(7px) saturate(0.85);
+  mask-image: radial-gradient(78% 76% at 34% 50%, #000 42%, transparent 78%);
   pointer-events: none;
 }
 .city-scroller .city-sec[data-side='right']::before {
-  background: radial-gradient(62% 62% at 62% 50%, rgba(4, 8, 13, 0.92), rgba(4, 8, 13, 0.55) 62%, transparent 82%);
+  background:
+    radial-gradient(52% 54% at 66% 50%, rgba(3, 6, 11, 0.90), rgba(3, 6, 11, 0.66) 48%, transparent 74%),
+    radial-gradient(78% 76% at 66% 50%, rgba(3, 6, 11, 0.52), transparent 80%);
+  mask-image: radial-gradient(78% 76% at 66% 50%, #000 42%, transparent 78%);
 }
 
 .city-chap {
@@ -226,7 +235,6 @@ body > .city-stage.is-loaded canvas {
 .city-chap-name {
   font-size: 1.4rem;
   font-weight: 300;
-  color: var(--city-ink);
 }
 
 .city-spacer {
@@ -393,26 +401,42 @@ html.city-scrolled body > .city-hint {
     display: none;
   }
 
-  /* panels sit low so the city stays visible above the text */
+  /* Panels sit low so the city stays visible above the text.
+     The scrim is the panel's own background rather than a ::before: the panel
+     clips its overflow to cap its height, which was cutting the pseudo-element
+     off and leaving a hard horizontal edge across the city exactly where the
+     fade was supposed to be. As the box's own background the gradient starts
+     fully transparent at the top of the box, so there is no edge to see, and
+     the box runs to the bottom of the viewport so there is none underneath
+     either. */
   .city-scroller .city-sec,
   .city-scroller .city-sec[data-side='right'] {
     top: auto;
-    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    bottom: 0;
     translate: none;
     width: auto;
-    left: 1.15rem;
-    right: 1.15rem;
+    left: 0;
+    right: 0;
     text-align: left;
-    max-height: 64svh;
+    max-height: 82svh;
     overflow: hidden;
+    padding: 7rem 1.15rem calc(3.8rem + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(4, 8, 13, 0.14) 26%,
+      rgba(4, 8, 13, 0.55) 44%,
+      rgba(4, 8, 13, 0.88) 62%,
+      rgba(4, 8, 13, 0.96) 78%,
+      rgba(4, 8, 13, 0.97) 100%
+    );
   }
   .city-scroller .city-sec[data-side='right'] .city-chap {
     justify-content: flex-start;
   }
   .city-scroller .city-sec::before,
   .city-scroller .city-sec[data-side='right']::before {
-    inset: -3rem -1.6rem -6rem;
-    background: linear-gradient(180deg, transparent, rgba(4, 8, 13, 0.92) 22%, rgba(4, 8, 13, 0.98));
+    display: none;
   }
   /* the reused row layouts are tuned for a wide column; tighten them here */
   .city-scroller .city-sec .mg-row {
@@ -453,4 +477,90 @@ html.city-scrolled body > .city-hint {
   .city-hint i::after {
     animation: none;
   }
+}
+
+/* ---------------------------------------------------------------- loading --
+   Shown from the moment the script decides the stage is worth attempting, and
+   taken away again either when the stage takes over or when the page gives up
+   and falls back to the stacked layout. It is fixed to the viewport and lifted
+   to <body> along with the stage, for the same reason: an ancestor in the
+   shared layout is transformed. */
+body > .city-boot {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(120% 90% at 50% 30%, #241521 0%, #140d16 45%, #0a070c 100%);
+  transition: opacity 620ms ease, visibility 620ms;
+}
+
+body > .city-boot.is-done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.city-boot-inner {
+  display: grid;
+  justify-items: center;
+  gap: 1.1rem;
+  padding: 0 2rem;
+  text-align: center;
+}
+
+/* three rising sparks — the same idea as the pyreflies in the scene */
+.city-boot-mark {
+  display: flex;
+  gap: 0.55rem;
+  height: 2.4rem;
+  align-items: flex-end;
+}
+
+.city-boot-mark i {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(to top, transparent, #63f0d8 55%, #fff);
+  transform-origin: bottom;
+  animation: city-boot-spark 1.5s ease-in-out infinite;
+}
+
+.city-boot-mark i:nth-child(2) { animation-delay: 0.22s; }
+.city-boot-mark i:nth-child(3) { animation-delay: 0.44s; }
+
+@keyframes city-boot-spark {
+  0%, 100% { transform: scaleY(0.22); opacity: 0.35; }
+  50%      { transform: scaleY(1);    opacity: 1; }
+}
+
+.city-boot-bar {
+  width: min(240px, 56vw);
+  height: 2px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.12);
+  overflow: hidden;
+}
+
+.city-boot-bar > span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #63f0d8, #ffb45e);
+  transition: width 260ms ease;
+}
+
+.city-boot-note {
+  margin: 0;
+  font-size: 0.62rem;
+  letter-spacing: 0.24em;
+  color: rgb(207 238 248 / 0.5);
+  min-height: 1em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .city-boot-mark i { animation: none; transform: scaleY(0.6); }
+  body > .city-boot { transition: none; }
 }

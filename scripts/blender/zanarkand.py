@@ -256,6 +256,71 @@ def onion_dome(part, x, y, z, radius, height, seg, phase):
                    height * (h1 - h0), segments=seg, phase=phase)
 
 
+
+def carapace(part, x, y, z, rx, ry, rz, rings=6, segments=14, phase=0.0):
+    """A half-ellipsoid shell.
+
+    The old city is not built of towers standing on the ground — it is built of
+    great smooth carapaces with the towers growing out of them, like something
+    that grew rather than something that was stacked. This is that shell.
+    """
+    verts, faces = [], []
+    for i in range(rings + 1):
+        phi = (math.pi * 0.5) * i / rings
+        sp, cp = math.sin(phi), math.cos(phi)
+        for j in range(segments):
+            th = TAU * j / segments + phase
+            verts.append((x + rx * sp * math.cos(th),
+                          y + ry * sp * math.sin(th),
+                          z + rz * cp))
+    for i in range(rings):
+        for j in range(segments):
+            faces.append([i * segments + j,
+                          i * segments + (j + 1) % segments,
+                          (i + 1) * segments + (j + 1) % segments,
+                          (i + 1) * segments + j])
+    part.push(verts, faces)
+
+
+def spire(part, x, y, z, r, h, phase=0.0, seg=5):
+    """A needle with a bulb at its shoulder — the silhouette of the skyline."""
+    part.prism((x, y, z), r, r * 0.78, h * 0.42, segments=seg, phase=phase)
+    onion_dome(part, x, y, z + h * 0.42, r * 0.92, h * 0.30, seg, phase)
+    part.prism((x, y, z + h * 0.72), r * 0.30, 0.02, h * 0.28, segments=seg, phase=phase)
+
+
+def portholes(P, x, y, z0, z1, radius, rows, per_row, phase=0.0, size=1.0, frame=True):
+    """Courses of lit windows set into a wall.
+
+    Boxes laid flat against the surface, not discs standing off it: the radial
+    axis is the *shallow* one, so each window is a tall recess with a lit pane
+    at the back of it. An earlier version placed little cylinders face-up on a
+    vertical wall, which from any angle read as litter stuck to the building.
+    """
+    dark, neon = P["dark"], P["neon"]
+    for r in range(rows):
+        zz = z0 + (z1 - z0) * (r + 0.5) / max(1, rows)
+        for i in range(per_row):
+            a = TAU * i / per_row + phase + r * 0.19
+            px, py = x + math.cos(a) * radius, y + math.sin(a) * radius
+            # the reveal: a shallow dark frame proud of the wall. Only the
+            # buildings the camera gets near carry it — on the rest it is eight
+            # vertices spent on something a pixel wide.
+            if frame:
+                dark.box((px, py, zz), (size * 0.5, size * 1.7, size * 2.5), rot=(0, 0, a))
+            # the pane, a touch narrower and standing just outside it
+            neon.box((px + math.cos(a) * size * 0.28, py + math.sin(a) * size * 0.28, zz),
+                     (size * 0.16, size * 1.15, size * 1.9), rot=(0, 0, a))
+
+
+def fluting(part, x, y, z0, z1, radius, count, phase=0.0, w=0.5):
+    """Thin vertical battens up a drum — the ribbing every surface carries."""
+    for i in range(count):
+        a = TAU * i / count + phase
+        part.box((x + math.cos(a) * radius, y + math.sin(a) * radius, z0),
+                 (w, w * 2.6, z1 - z0), rot=(0, 0, a), base_pivot=True)
+
+
 def waterfall(P, x, y, top_z, width, rnd, depth=None, segments=5):
     """A sheet of water falling from a building into the sea.
 
@@ -517,6 +582,61 @@ def great_stadium(P, cx, cy, radius, rnd):
                     continue
                 neon.box((cx + math.cos(a0) * rr, cy + math.sin(a0) * rr, zz + 1.4),
                          (2.4, 2.4, 0.34))
+    # ---- aisles and blocks --------------------------------------------------
+    # A single unbroken bank of seats reads as texture rather than as a stand.
+    # Radial gangways cut it into blocks, each with a lit nose on its rail, and
+    # a walkway ring divides upper from lower — so the eye can measure it.
+    aisles = 12
+    for i in range(aisles):
+        a = TAU * i / aisles + 0.196
+        for t in range(tiers):
+            rr = radius * (1.16 - t * 0.058)
+            zz = rim_top - t * (rim_z / tiers) * 1.05
+            if ruined(a):
+                continue
+            (clad if ruined(a) else stone).box(
+                (cx + math.cos(a) * rr, cy + math.sin(a) * rr, zz),
+                (2.6, 3.4, 2.6), rot=(0, 0, a), base_pivot=True)
+            if t % 2 == 0:
+                neon.box((cx + math.cos(a) * rr, cy + math.sin(a) * rr, zz + 2.4),
+                         (2.2, 0.5, 0.30), rot=(0, 0, a))
+
+    # the mid-level walkway that splits the bowl in two
+    mid = tiers // 2
+    mid_r = radius * (1.16 - mid * 0.058)
+    mid_z = rim_top - mid * (rim_z / tiers) * 1.05
+    for i in range(seg):
+        a0, a1 = TAU * i / seg, TAU * (i + 1) / seg
+        if ruined(a0):
+            continue
+        stone.beam((cx + math.cos(a0) * (mid_r + 1.6), cy + math.sin(a0) * (mid_r + 1.6), mid_z + 1.2),
+                   (cx + math.cos(a1) * (mid_r + 1.6), cy + math.sin(a1) * (mid_r + 1.6), mid_z + 1.2),
+                   5.4, 1.0)
+        neon.beam((cx + math.cos(a0) * (mid_r + 3.9), cy + math.sin(a0) * (mid_r + 3.9), mid_z + 2.2),
+                  (cx + math.cos(a1) * (mid_r + 3.9), cy + math.sin(a1) * (mid_r + 3.9), mid_z + 2.2),
+                  0.5, 0.5)
+
+    # ---- the crowd ----------------------------------------------------------
+    # Empty terraces read as a model of a stadium rather than a stadium. These
+    # are specks, not people — but a hundred thousand points of light banked up
+    # the bowl is what a full house looks like from across the water, and they
+    # are `neon`, so the house fills as the city comes back.
+    for t in range(tiers):
+        rr = radius * (1.16 - t * 0.058) - 1.2
+        zz = rim_top - t * (rim_z / tiers) * 1.05 + 2.0
+        for i in range(seg * 3):
+            a = TAU * i / (seg * 3)
+            if ruined(a) or rnd.random() < 0.34:
+                continue
+            # leave the gangways clear — the gaps are what make the blocks read
+            lane = (a + 0.196) % (TAU / aisles)
+            if lane < 0.055 or lane > TAU / aisles - 0.055:
+                continue
+            jr = rr + rnd.uniform(-1.3, 1.3)
+            neon.box((cx + math.cos(a) * jr, cy + math.sin(a) * jr,
+                      zz + rnd.uniform(-0.3, 0.7)),
+                     (0.85, 0.85, rnd.uniform(0.8, 1.5)), rot=(0, 0, a))
+
     # stairs radiating down through the stands
     for i in range(16):
         a = TAU * i / 16 + 0.1
@@ -751,25 +871,140 @@ def build_city():
     great_stadium(P, 0, 0, STADIUM_R, rnd)
     sphere_pool(P, 0, 0, POOL_Z, POOL_R, rnd)
 
-    # a ring of silhouettes on the far horizon — pure backdrop, no detail
-    far, neon = P["far"], P["neon"]
-    for _ in range(320):
+    # ---- the waterfront -----------------------------------------------------
+    # Not a ring of identical towers at equal spacing — that reads as a fence.
+    # The city grows in clusters: a tall spire with lower blocks crowded around
+    # its feet, gaps of open water between districts, and every district lit
+    # from inside. It is `clad`, so it is rubble at the start and rises as the
+    # restoration front sweeps up, and each district vents cascades into the
+    # sea, which is what says water city rather than ruined city.
+    far, neon, clad, dark, stone = P["far"], P["neon"], P["clad"], P["dark"], P["stone"]
+
+    def tower(x, y, w, h, lean, windows=True, ribs=True):
+        """One building, in the city's own idiom.
+
+        A carapace at the foot, a ribbed drum growing out of it banded with lit
+        portholes, and a crown of unequal spires — not a stepped cone. The
+        reference skyline is almost entirely made of these three moves.
+        """
+        # the shell it grows out of
+        carapace(clad, x, y, 6.0, w * 1.35, w * 1.20, w * 0.78, phase=lean)
+        carapace(dark, x, y, 5.0, w * 1.62, w * 1.34, w * 0.42,
+                 rings=6, segments=16, phase=lean + 0.4)
+
+        # the drum: alternating wide and narrow bands, each ring of the wide
+        # ones carrying a course of windows
+        z = 6.0 + w * 0.62
+        bands = max(3, int(h / 42))
+        for k in range(bands):
+            t0 = k / bands
+            r0 = w * (0.66 - 0.30 * t0)
+            bh = h / bands
+            # a slight belly rather than a straight taper: the drums in the
+            # reference swell before they step in
+            clad.prism((x, y, z), r0 * 0.94, r0 * 1.02, bh * 0.34, segments=10, phase=lean)
+            clad.prism((x, y, z + bh * 0.34), r0 * 1.02, r0 * 0.93, bh * 0.38,
+                       segments=10, phase=lean)
+            if ribs:
+                fluting(clad, x, y, z, z + bh * 0.72, r0 * 1.0, 8, lean + 0.31, w=r0 * 0.085)
+            # the rib: a wider, shallower collar between courses
+            clad.prism((x, y, z + bh * 0.72), r0 * 1.16, r0 * 1.10, bh * 0.28,
+                       segments=10, phase=lean)
+            if windows:
+                portholes(P, x, y, z + bh * 0.10, z + bh * 0.64, r0 * 0.99,
+                          max(2, int(bh / 30)), 8, phase=lean, size=w * 0.065,
+                          frame=ribs)
+            neon.prism((x, y, z + bh * 0.74), r0 * 1.17, r0 * 1.17, bh * 0.045,
+                       segments=10, phase=lean)
+            z += bh
+
+        # the crown: one tall spire off-centre and a huddle of shorter ones
+        crown_r = w * 0.30
+        spire(clad, x, y, z, crown_r * 1.05, h * 0.30, lean)
+        neon.prism((x, y, z + h * 0.10), crown_r * 0.5, crown_r * 0.5, 2.0, segments=6)
+        for k in range(rnd.randint(4, 7)):
+            sa = lean + TAU * k / 6.3 + rnd.uniform(-0.35, 0.35)
+            sr = w * rnd.uniform(0.34, 0.52)
+            spire(clad, x + math.cos(sa) * sr, y + math.sin(sa) * sr, z - w * 0.06,
+                  w * rnd.uniform(0.07, 0.13), h * rnd.uniform(0.10, 0.22), sa)
+            if rnd.random() < 0.7:
+                neon.prism((x + math.cos(sa) * sr, y + math.sin(sa) * sr, z + 1.0),
+                           w * 0.05, w * 0.05, 1.4, segments=6)
+
+    # six districts, unevenly spaced and at different distances
+    base = rnd.uniform(0, TAU)
+    gaps = [0.0, 0.78, 1.55, 2.62, 3.55, 4.90]
+    for gi, g in enumerate(gaps):
+        a = base + g + rnd.uniform(-0.14, 0.14)
+        d = rnd.uniform(205.0, 345.0)
+        ox, oy = math.cos(a) * d, math.sin(a) * d
+
+        # the island the district stands on
+        rock_shelf(P, ox, oy, rnd.uniform(74.0, 104.0), 16.0, rnd, segments=11)
+
+        # the spire, then two to four blocks huddled round its feet
+        big_w = rnd.uniform(30.0, 46.0)
+        big_h = rnd.uniform(190.0, 330.0)
+        print('DISTRICT', round(ox, 1), round(oy, 1))
+        tower(ox, oy, big_w, big_h, a)
+
+        for _ in range(rnd.randint(2, 3)):
+            sa = rnd.uniform(0, TAU)
+            sd = rnd.uniform(big_w * 1.3, big_w * 2.6)
+            sx, sy = ox + math.cos(sa) * sd, oy + math.sin(sa) * sd
+            tower(sx, sy, rnd.uniform(13.0, 24.0), rnd.uniform(55.0, 150.0), sa, ribs=False)
+
+        # low quays and warehouses filling the ground between them
+        for _ in range(4):
+            qa = rnd.uniform(0, TAU)
+            qd = rnd.uniform(big_w * 1.1, big_w * 3.0)
+            qx, qy = ox + math.cos(qa) * qd, oy + math.sin(qa) * qd
+            hh = rnd.uniform(9.0, 26.0)
+            ww = rnd.uniform(7.0, 15.0)
+            carapace(clad, qx, qy, 4.0, ww * 1.2, ww, hh * 0.8, rings=6, segments=14,
+                     phase=qa)
+            clad.prism((qx, qy, 4.0), ww * 0.62, ww * 0.5, hh, segments=8, phase=qa)
+            portholes(P, qx, qy, 8.0, 8.0 + hh * 0.7, ww * 0.60,
+                      max(1, int(hh / 24)), 5, phase=qa, size=ww * 0.10, frame=False)
+            spire(clad, qx, qy, 4.0 + hh, ww * 0.12, hh * 0.5, qa)
+
+        # rubble, so the district has something to be before it is rebuilt
+        for _ in range(11):
+            ra = rnd.uniform(0, TAU)
+            rr = rnd.uniform(big_w * 0.5, big_w * 3.0)
+            dark.box((ox + math.cos(ra) * rr, oy + math.sin(ra) * rr, 1.0),
+                     (rnd.uniform(3.0, 10.0), rnd.uniform(3.0, 10.0), rnd.uniform(3.0, 15.0)),
+                     rot=(0, 0, rnd.uniform(0, TAU)), base_pivot=True)
+
+        # cascades off the district
+        for k in range(3):
+            fa = a + rnd.uniform(-1.2, 1.2)
+            fd = rnd.uniform(big_w * 0.6, big_w * 2.2)
+            waterfall(P, ox + math.cos(fa) * fd, oy + math.sin(fa) * fd,
+                      rnd.uniform(46.0, 96.0), rnd.uniform(5.0, 10.0), rnd)
+
+        # a lit causeway reaching back toward the arena
+        for k in range(7):
+            t0 = k / 7.0
+            bx, by = ox * (1.0 - t0 * 0.34), oy * (1.0 - t0 * 0.34)
+            stone.box((bx, by, 1.0), (7.0, 13.0, 2.2), rot=(0, 0, a), base_pivot=True)
+            if k % 2 == 0:
+                neon.box((bx, by, 3.6), (5.4, 1.0, 0.5), rot=(0, 0, a))
+
+    # a thin ring of silhouettes far behind them, for depth only
+    for _ in range(52):
         a = rnd.uniform(0, TAU)
-        d = rnd.uniform(620, 1500)
-        near = 1.0 - min(1.0, (d - 620) / 880)
-        w = rnd.uniform(18, 60)
-        h = rnd.uniform(40, 165) + 130 * near * rnd.random()
+        d = rnd.uniform(760, 1500)
+        w = rnd.uniform(24, 70)
+        h = rnd.uniform(60, 210)
         x, y = math.cos(a) * d, math.sin(a) * d
         r = w * 0.5
         far.prism((x, y, -12.0), r, r * rnd.uniform(0.7, 0.92), h, segments=6,
                   phase=rnd.uniform(0, TAU))
-        if rnd.random() < 0.6:
+        if rnd.random() < 0.55:
             onion_dome(far, x, y, h - 12.0, r * 0.8, h * 0.22, 6, 0.0)
-            far.prism((x, y, h - 12.0 + h * 0.22), r * 0.07, r * 0.02, h * 0.26, segments=5)
-        for i in range(1, int(h / 34)):
-            # thicker than they need to be up close: at 600–1500 units a 1.7-unit
-            # band lands under a pixel and strobes as the camera moves
-            neon.prism((x, y, i * 34.0), r * 0.86, r * 0.86, 5.5, segments=6)
+        for i in range(1, int(h / 46)):
+            neon.prism((x, y, i * 46.0), r * 0.86, r * 0.86, 5.5, segments=6)
 
     coll = bpy.context.scene.collection
     parts = [p for p in P.values() if isinstance(p, Part)]
@@ -781,8 +1016,10 @@ def build_city():
 def export_glb(path, draco=True):
     for obj in bpy.data.objects:
         obj.select_set(obj.type == "MESH")
+    # No normals: the lit materials are flat-shaded in three.js and the smooth
+    # ones recompute their own, so shipping normals is a megabyte of nothing.
     kwargs = dict(filepath=path, export_format="GLB", use_selection=True,
-                  export_apply=True, export_yup=True)
+                  export_apply=True, export_yup=True, export_normals=False)
     if draco:
         try:
             bpy.ops.export_scene.gltf(export_draco_mesh_compression_enable=True,

@@ -23,25 +23,67 @@ export const WAYPOINTS: Waypoint[] = [
   { pos: [300.0, 156, 0.0], target: [0, 40, 0] },
   { pos: [129.7, 124, 192.4], target: [0, 40, 0] },
   // down to rim height, the blades sweeping past
-  { pos: [-75.4, 92, 154.6], target: [0, 40, 0] },
-  { pos: [-126.8, 62, 17.8], target: [0, 34, 0] },
-  // swinging round to line up with the pool's long axis
-  { pos: [-30.8, 44, -84.6], target: [0, 30, 0] },
-  { pos: [48.5, 32, -28.0], target: [0, 28, 0] },
-  // held just outside the water
-  { pos: [30.0, 27, 0.0], target: [0, 28, 0] },
+  { pos: [-88.0, 104, 168.0], target: [0, 40, 0] },
+  { pos: [-152.0, 86, 18.0], target: [0, 34, 0] },
+  // Swinging round to line up with the pool's long axis — and staying above
+  // the colonnade while it does. At rim height the approach threads between
+  // the columns and the shot is mostly pillar; the arc rides over them and
+  // drops onto the sphere from above instead.
+  { pos: [-44.0, 74, -96.0], target: [0, 30, 0] },
+  { pos: [66.0, 60, -36.0], target: [0, 28, 0] },
+  // held just outside the water, coming down onto it
+  { pos: [40.0, 34, 0.0], target: [0, 27, 0] },
   // Inside, and lingering. Placed so the scoreboard hangs dead ahead with a
   // goal at each edge of frame — the arrangement only reads from this narrow
   // band of positions, so the path is built around it rather than the other way
   // round, and two near-identical points hold the camera there.
-  { pos: [17.0, 27, 0.0], target: [-16, 31, 0] },
-  { pos: [12.0, 27, 0.0], target: [-18, 31, 0] },
+  { pos: [16.0, 27, 0.0], target: [-16, 31, 0] },
+  { pos: [2.0, 27, 0.0], target: [-18, 31, 0] },
   // out through the far wall
   { pos: [-22.0, 27, -3.0], target: [-60, 30, -16] },
   { pos: [-68.9, 48, -12.2], target: [0, 32, 0] },
   { pos: [-70.7, 90, -84.3], target: [0, 30, 0] },
   // rising away as dawn comes up
   { pos: [0.0, 158, -95.0], target: [0, 25, 0] },
+]
+
+/**
+ * Where the camera settles for each chapter, as a parameter along the flight
+ * path. Scroll is remapped through these, so the camera eases to a stop on a
+ * composed shot while a chapter is being read and only travels between them.
+ * Without this the camera drifts continuously and never lands anywhere.
+ */
+// Chosen against the path, not by eye: 0.65–0.75 threads the colonnade and the
+// stands, so a stop there parks the lens inside a column. The dive through that
+// band is a transit between chapters instead.
+export const SECTION_STOPS = [0.03, 0.20, 0.58, 0.83, 0.99]
+
+
+
+/**
+ * Chapters that are not framed by the flight path but by hand.
+ *
+ * The shot from inside the sphere only works from a narrow band of positions —
+ * the scoreboard has to hang dead ahead with a goal at each edge — and hunting
+ * for the parameter along the curve that happens to land there is fragile:
+ * every edit to a waypoint re-parameterises the whole path and moves it. So
+ * this chapter states its camera outright, and the renderer eases from the
+ * curve into it as the chapter arrives.
+ *
+ * `null` means "wherever the path is". Indices match SECTIONS.
+ */
+export const SECTION_CAMS: (Waypoint | null)[] = [
+  null,
+  null,
+  // Well outside, and high. The path's own parameter here rides in among the
+  // colonnade — at 140 units the concourse alone fills the frame — so this
+  // stands right off and takes the bowl whole, with the waterfront behind it.
+  { pos: [236.0, 122.0, -200.0], target: [0, 34, 0] },
+  // Inside the water. The scoreboard sits at (-9.7, 33.4) with the two goals at
+  // z = ±9.5, so looking down -X from just inside the near wall puts the board
+  // ahead and a goal at either edge of frame.
+  { pos: [17.0, 26.0, 0.0], target: [-9.7, 33.4, 0.0] },
+  null,
 ]
 
 /** Radius of the sphere pool, for the shot through the water. */
@@ -78,6 +120,9 @@ export const SECTIONS: SectionSpec[] = [
   { id: 'sec-3', num: '03', name: 'Skills', label: 'SKILLS', side: 'left' },
   { id: 'sec-4', num: '04', name: 'Generative', label: 'ART', side: 'right' },
 ]
+
+/** Which side each chapter's panel sits on, so the shot can lean the other way. */
+export const SECTION_SIDES = SECTIONS.map(s => s.side)
 
 /**
  * Scroll height, in viewport heights per chapter. The orbit is one continuous

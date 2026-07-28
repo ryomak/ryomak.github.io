@@ -7,7 +7,18 @@
 
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import { FOV, POOL, POOL_RADIUS, RESTORE_FRONT, RESTORE_RANGE, STADIUM, WAYPOINTS } from './config'
+import {
+  FOV,
+  POOL,
+  POOL_RADIUS,
+  RESTORE_FRONT,
+  RESTORE_RANGE,
+  SECTION_CAMS,
+  SECTION_SIDES,
+  SECTION_STOPS,
+  STADIUM,
+  WAYPOINTS,
+} from './config'
 
 const MODEL_URL = '/models/zanarkand.glb'
 
@@ -302,10 +313,11 @@ function buildMaterials(shared: RestoreUniforms, _tier: Tier) {
  * shape, and the whole pattern rotates slowly, as if the water were turning
  * inside its cage.
  */
-function animateWater(material: THREE.MeshPhysicalMaterial, time: THREE.IUniform<number>, centre: THREE.Vector3, radius: number, front: THREE.IUniform<number>) {
+function animateWater(material: THREE.MeshPhysicalMaterial, time: THREE.IUniform<number>, centre: THREE.Vector3, radius: number, front: THREE.IUniform<number>, foam: THREE.IUniform<number>) {
   material.onBeforeCompile = shader => {
     shader.uniforms.uTime = time
     shader.uniforms.uFill = front
+    shader.uniforms.uFoam = foam
     shader.uniforms.uPoolC = { value: centre }
     shader.uniforms.uPoolR = { value: radius }
     shader.vertexShader = shader.vertexShader
@@ -358,7 +370,7 @@ function animateWater(material: THREE.MeshPhysicalMaterial, time: THREE.IUniform
     // full of — the crests go opaque and bright while the troughs stay clear.
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>',
-        '#include <common>\nvarying float vPoolH;\nvarying float vPoolY;\nuniform float uFill;')
+        '#include <common>\nvarying float vPoolH;\nvarying float vPoolY;\nuniform float uFill;\nuniform float uFoam;')
       .replace(
         '#include <map_fragment>',
         `// the water level: nothing above the fill line exists yet
@@ -366,7 +378,7 @@ function animateWater(material: THREE.MeshPhysicalMaterial, time: THREE.IUniform
          #include <map_fragment>
          // and the surface itself runs bright, like a meniscus
          float fillEdge = smoothstep(uFill - 2.2, uFill, vPoolY);
-         float foam = max(smoothstep(0.72, 1.55, vPoolH), fillEdge * 0.9);
+         float foam = max(smoothstep(0.72, 1.55, vPoolH), fillEdge * 0.9) * uFoam;
          float lace = smoothstep(0.15, 0.95, vPoolH) * 0.35;
          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), foam * 0.75 + lace * 0.2);`,
       )
@@ -551,16 +563,41 @@ function createMotes(count: number, time: THREE.IUniform<number>, viewport: THRE
   geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(100, 90, 0), 1400)
 
   const MOTION = /* glsl */ `
-    vec3 motePos(vec3 base, vec3 seed, float t, float surge) {
+    vec3 motePos(vec3 base, vec3 seed, float t, float surge, vec3 flow) {
       float speed = 1.4 + seed.x * 2.6 + surge * 7.0;
       float span = 190.0;
       vec3 p = base;
       // pyreflies rise; the wander only needs to be enough to curve the wake
-      p.y = mod(base.y + t * speed + seed.y * span, span);
+      float climb = mod(base.y + t * speed + seed.y * span, span);
+      p.y = climb;
+      // ...but not straight up. the flow vector turns with the scroll, so the swarm
+      // leans a different way in every chapter — streaming out over the water
+      // in one, curling back over the bowl in the next — while each mote still
+      // carries its own drift along the way it has actually gone.
+      p.x += flow.x * climb * (0.7 + seed.z * 0.6);
+      p.z += flow.z * climb * (0.7 + seed.x * 0.6);
+      p.y += flow.y * climb * (0.5 + seed.y * 0.5);
       float ph = t * (0.42 + seed.z * 0.55) + seed.y * 12.56;
-      float swirl = 3.0 + 7.0 * surge * (0.4 + seed.z);
+      float swirl = 1.6 + 3.4 * surge * (0.4 + seed.z);
       p.x += sin(ph) * swirl + sin(ph * 2.1 + seed.x * 4.0) * swirl * 0.4;
       p.z += cos(ph * 1.21) * swirl + cos(ph * 1.8 + seed.y * 3.0) * swirl * 0.35;
+      // The wriggle — a function of time alone, never of position.
+      //
+      // An earlier version made the phase depend on how far the mote had
+      // climbed, which put a standing wave in space: the tail was bent into an
+      // S even when the head had swum dead straight. The tail is drawn by
+      // evaluating this function at earlier times, so it can only ever be the
+      // path the head actually took — which is the point. Make the head swim,
+      // and the body follows.
+      // Slow and shallow. The mote's job is to rise; the wriggle is a hint of
+      // life on top of that, not the motion itself. Fast and wide read as a
+      // creature thrashing, and — because the body is drawn as a polyline
+      // through eight past positions — put visible corners in it.
+      float wig = t * (2.1 + seed.z * 0.9) + seed.y * 25.0;
+      float amp = 0.5 + 0.45 * seed.z;
+      p.x += sin(wig) * amp;
+      p.z += cos(wig * 0.91 + seed.x * 3.0) * amp;
+      p.y += sin(wig * 0.57 + seed.z * 5.0) * amp * 0.35;
       return p;
     }
   `
@@ -574,6 +611,7 @@ function createMotes(count: number, time: THREE.IUniform<number>, viewport: THRE
       uSurge: { value: 0 },
       uRestore: { value: 0 },
       uScale: { value: 1 },
+      uFlow: { value: new THREE.Vector3() },
       uViewport: { value: viewport },
     },
     vertexShader: /* glsl */ `
@@ -581,6 +619,7 @@ function createMotes(count: number, time: THREE.IUniform<number>, viewport: THRE
       uniform float uTime;
       uniform float uSurge;
       uniform float uScale;
+      uniform vec3 uFlow;
       uniform vec2 uViewport;
       varying float vFade;
       varying float vNear;
@@ -592,12 +631,12 @@ function createMotes(count: number, time: THREE.IUniform<number>, viewport: THRE
       varying vec4 vT3;
       ${MOTION}
       void main() {
-        vec3 p = motePos(position, aSeed, uTime, uSurge);
+        vec3 p = motePos(position, aSeed, uTime, uSurge, uFlow);
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
         vec4 clip = projectionMatrix * mv;
         gl_Position = clip;
 
-        float size = (58.0 + 96.0 * aSeed.x) * (1.0 + 1.1 * uSurge);
+        float size = (105.0 + 165.0 * aSeed.x) * (1.0 + 1.1 * uSurge);
         gl_PointSize = size * uScale * 40.0 / max(-mv.z, 1.0);
 
         vec2 headNdc = clip.xy / max(clip.w, 0.001);
@@ -606,15 +645,15 @@ function createMotes(count: number, time: THREE.IUniform<number>, viewport: THRE
         // fraction of this sprite, so the fragment can draw the wake directly.
         vec2 offs[8];
         for (int i = 0; i < 8; i++) {
-          float back = (float(i) + 1.0) * 0.085;
+          float back = (float(i) + 1.0) * 0.22;
           vec4 c = projectionMatrix * modelViewMatrix
-                 * vec4(motePos(position, aSeed, uTime - back, uSurge), 1.0);
+                 * vec4(motePos(position, aSeed, uTime - back, uSurge, uFlow), 1.0);
           vec2 ndc = c.xy / max(c.w, 0.001);
           vec2 pixels = (ndc - headNdc) * uViewport * 0.5;
           vec2 local = pixels / max(gl_PointSize, 1.0);
           // keep the wake inside the sprite rather than letting it clip
           float m = length(local);
-          if (m > 0.40) local *= 0.40 / m;
+          if (m > 0.46) local *= 0.46 / m;
           offs[i] = local;
         }
         vT0 = vec4(offs[0], offs[1]);
@@ -649,36 +688,54 @@ function createMotes(count: number, time: THREE.IUniform<number>, viewport: THRE
         q.y = -q.y;
 
         // the head: a round bead of light
-        float head = exp(-dot(q, q) * 210.0);
-        float glow = exp(-dot(q, q) * 26.0) * 0.22;
+        // the head is a bead drawn out along the direction it is travelling, so the
+        // creature reads as one long body rather than a dot with a tail
+        vec2 dir = normalize(vT0.xy + vec2(1e-5));
+        vec2 hq = vec2(dot(q, dir), dot(q, vec2(-dir.y, dir.x)));
+        float head = exp(-(hq.x * hq.x * 200.0 + hq.y * hq.y * 900.0));
+        float glow = exp(-dot(q, q) * 30.0) * 0.16
+                   + exp(-dot(q, q) * 9.0) * 0.07;
 
-        // the wake, laid along the path actually travelled
+        // The wake, laid along the path actually travelled — as one continuous
+        // smear, not a row of beads. Summing a blob per past position gave the
+        // creature a second head halfway down its tail; taking the distance to
+        // the *polyline* instead stretches a single ribbon of light behind it.
         vec2 tp[8];
         tp[0] = vT0.xy; tp[1] = vT0.zw;
         tp[2] = vT1.xy; tp[3] = vT1.zw;
         tp[4] = vT2.xy; tp[5] = vT2.zw;
         tp[6] = vT3.xy; tp[7] = vT3.zw;
 
-        float tail = 0.0;
-        float far = 0.0;
+        float nearest = 1e9;
+        float ageAt = 0.0;
+        vec2 prev = vec2(0.0);
         for (int i = 0; i < 8; i++) {
-          float t = float(i) + 1.0;
-          vec2 d = q - tp[i];
-          float tight = 240.0 - t * 18.0;
-          float w = 0.42 / (1.0 + t * 0.44);
-          tail += exp(-dot(d, d) * tight) * w;
-          // a softer halo around the older beads so the wake joins up
-          far = max(far, float(i) / 8.0 * exp(-dot(d, d) * 55.0));
+          vec2 cur = tp[i];
+          vec2 seg = cur - prev;
+          float len2 = max(dot(seg, seg), 1e-7);
+          float u = clamp(dot(q - prev, seg) / len2, 0.0, 1.0);
+          vec2 closest = prev + seg * u;
+          float d2 = dot(q - closest, q - closest);
+          if (d2 < nearest) {
+            nearest = d2;
+            ageAt = (float(i) + u) / 8.0;
+          }
+          prev = cur;
         }
 
-        float alpha = (head + tail + glow + far * 0.30) * vFade * vNear;
+        // thickens and softens as it falls behind, and dies away
+        float thick = mix(5200.0, 1900.0, ageAt);
+        float tail = exp(-nearest * thick) * pow(1.0 - ageAt, 0.75) * 0.9;
+
+        float alpha = (head + tail + glow) * vFade * vNear;
         if (alpha < 0.003) discard;
 
-        // iridescent down the wake, white at the head
-        float dist = length(q);
-        float hue = fract(vSeed.y + uTime * 0.04 + dist * 1.6);
-        vec3 iris = 0.45 + 0.55 * cos(6.28318 * (hue + vec3(0.00, 0.33, 0.67)));
-        vec3 col = mix(iris, vec3(1.0), clamp(head * 1.3 + 0.10, 0.0, 1.0));
+        // the tail runs through the spectrum; the head stays white
+        float hue = fract(vSeed.y + uTime * 0.06 + ageAt * 1.35);
+        vec3 iris = 0.42 + 0.58 * cos(6.28318 * (hue + vec3(0.00, 0.33, 0.67)));
+        // lift the whole spectrum toward white so it glows rather than tints
+        iris = mix(iris, vec3(1.0), 0.22);
+        vec3 col = mix(iris, vec3(1.0), clamp(head * 1.6 + 0.10, 0.0, 1.0));
         gl_FragColor = vec4(col, alpha);
       }
     `,
@@ -689,7 +746,7 @@ function createMotes(count: number, time: THREE.IUniform<number>, viewport: THRE
 // ---------------------------------------------------------------------- scene
 export function createCityScene(
   canvas: HTMLCanvasElement,
-  { tier = 'high' }: { tier?: Tier } = {},
+  { tier = 'high', onProgress }: { tier?: Tier; onProgress?: (v: number) => void } = {},
 ): CityScene {
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -722,6 +779,7 @@ export function createCityScene(
   // should not simply be there at the start, it should fill the sphere as the
   // page scrolls, the same way everything else comes back.
   const poolFront: THREE.IUniform<number> = { value: POOL.y - POOL_RADIUS - 2 }
+  const poolFoam: THREE.IUniform<number> = { value: 1 }
   const shared = {
     front: { value: RESTORE_FRONT[0] } as THREE.IUniform<number>,
     soft: { value: 34 } as THREE.IUniform<number>,
@@ -813,13 +871,17 @@ export function createCityScene(
     'catmullrom',
     0.5,
   )
+  const fixedPos = new THREE.Vector3()
+  const fixedTarget = new THREE.Vector3()
   const poolCentre = new THREE.Vector3(POOL.x, POOL.y, POOL.z)
   const camPos = new THREE.Vector3()
   const camTarget = new THREE.Vector3()
+  const camForward = new THREE.Vector3()
+  const camRight = new THREE.Vector3()
 
   // ---- model -----------------------------------------------------------
   const materials = buildMaterials(shared, tier)
-  animateWater(materials.water, time, new THREE.Vector3(POOL.x, POOL.y, POOL.z), POOL_RADIUS, poolFront)
+  animateWater(materials.water, time, new THREE.Vector3(POOL.x, POOL.y, POOL.z), POOL_RADIUS, poolFront, poolFoam)
 
   const BY_NAME: Record<string, THREE.Material> = {
     Stone: materials.stone,
@@ -869,7 +931,12 @@ export function createCityScene(
         scene.add(cityRoot)
         resolve()
       },
-      undefined,
+      // Content-Length is not always there (gzip, some CDNs). When it is not,
+      // total is 0 and this reports nothing rather than dividing by zero — the
+      // loading screen falls back to its own indeterminate crawl.
+      evt => {
+        if (onProgress && evt.total > 0) onProgress(Math.min(1, evt.loaded / evt.total))
+      },
       err => reject(err),
     )
   })
@@ -1017,13 +1084,16 @@ export function createCityScene(
       const c = new pp.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType })
       c.addPass(new pp.RenderPass(scene, camera))
       const bloom = new pp.BloomEffect({
-        intensity: tier === 'high' ? 1.5 : 1.1,
-        luminanceThreshold: 0.18,
+        // A low threshold made every lit surface bloom, and once the city
+        // came back the glow swallowed the buildings behind it. Only genuinely
+        // bright things blow out now.
+        intensity: tier === 'high' ? 1.15 : 0.9,
+        luminanceThreshold: 0.42,
         luminanceSmoothing: 0.35,
         mipmapBlur: true,
         radius: tier === 'high' ? 0.72 : 0.5,
       })
-      const vignette = new pp.VignetteEffect({ darkness: 0.55, offset: 0.28 })
+      const vignette = new pp.VignetteEffect({ darkness: 0.38, offset: 0.34 })
       c.addPass(new pp.EffectPass(camera, bloom, vignette))
       renderer.toneMapping = THREE.ACESFilmicToneMapping
       composer = c
@@ -1050,12 +1120,61 @@ export function createCityScene(
     },
 
     render(dt: number) {
-      time.value += dt
-      // ease toward the scroll position so wheel jitter never reaches the camera
-      shown += (progress - shown) * Math.min(1, dt * 4.5)
+      // Animation runs on a clamped step — a long stall must not teleport the
+      // water or fling the swarm across the scene.
+      const step = Math.min(0.05, dt)
+      time.value += step
+      // The camera ease, though, uses the real elapsed time. Clamping it too
+      // meant the eased position advanced a fixed fraction *per frame*, so on
+      // a machine drawing one frame a second the camera crawled toward the
+      // reader's scroll position for half a minute after they stopped.
+      shown += (progress - shown) * (1 - Math.exp(-4.5 * Math.min(2, dt)))
 
-      posCurve.getPointAt(clamp01(shown), camPos)
-      targetCurve.getPointAt(clamp01(shown), camTarget)
+      // Remap scroll onto the path so the camera settles on each chapter's
+      // shot *while that chapter's text is centred*. The panels are centred at
+      // (i + 0.5) / n, so the stops have to land there — anchoring them at
+      // i / (n - 1) instead, as a first version did, left every shot arriving a
+      // fifth of a screen after the words it belongs to.
+      const n = SECTION_STOPS.length
+      const p0 = 0.5 / n
+      const span = 1 / n
+      const slot = (clamp01(shown) - p0) / span
+      const i = Math.max(0, Math.min(n - 2, Math.floor(slot)))
+      const local = clamp01(slot - i)
+      // smoothstep has zero gradient at both ends: slow at the stops, quick in
+      // between, which is the dwell we want
+      const travel = SECTION_STOPS[i] + (SECTION_STOPS[i + 1] - SECTION_STOPS[i]) * smoothstep(0, 1, local)
+
+      posCurve.getPointAt(clamp01(travel), camPos)
+      targetCurve.getPointAt(clamp01(travel), camTarget)
+
+      // Chapters that frame themselves. Blended in over the approach and out
+      // over the departure, so the path still carries the camera between them.
+      const eased = smoothstep(0, 1, local)
+      const camA = SECTION_CAMS[i]
+      const camB = SECTION_CAMS[i + 1]
+      if (camA) {
+        camPos.lerp(fixedPos.set(...camA.pos), 1 - eased)
+        camTarget.lerp(fixedTarget.set(...camA.target), 1 - eased)
+      }
+      if (camB) {
+        camPos.lerp(fixedPos.set(...camB.pos), eased)
+        camTarget.lerp(fixedTarget.set(...camB.target), eased)
+      }
+
+      // Push the subject to the side of frame the text is *not* on. The panels
+      // alternate left and right, and without this the stadium sits under the
+      // words as often as beside them. Swinging the aim rather than the camera
+      // keeps the flight path intact.
+      const sideNow = SECTION_SIDES[i] === 'left' ? -1 : 1
+      const sideNext = SECTION_SIDES[Math.min(SECTION_SIDES.length - 1, i + 1)] === 'left' ? -1 : 1
+      const bias = lerp(sideNow, sideNext, eased)
+      camForward.subVectors(camTarget, camPos)
+      const reach = camForward.length()
+      camForward.normalize()
+      camRight.crossVectors(camForward, camera.up).normalize()
+      camTarget.addScaledVector(camRight, bias * reach * 0.20)
+
       camera.position.copy(camPos)
       camera.lookAt(camTarget)
       // a slow drift so a paused scroll never looks like a still image
@@ -1065,7 +1184,7 @@ export function createCityScene(
       moonGroup.position.copy(camera.position).addScaledVector(MOON_DIR, 2600)
       moonGroup.quaternion.copy(camera.quaternion)
 
-      restore = smoothstep(RESTORE_RANGE[0], RESTORE_RANGE[1], shown)
+      restore = smoothstep(RESTORE_RANGE[0], RESTORE_RANGE[1], travel)
       shared.amount.value = restore
       shared.front.value = lerp(RESTORE_FRONT[0], RESTORE_FRONT[1], restore)
 
@@ -1074,13 +1193,13 @@ export function createCityScene(
       // not an effect: the fog thickens to water and everything tints.
       const submersion = 1 - smoothstep(POOL_RADIUS * 0.72, POOL_RADIUS * 1.12,
         camera.position.distanceTo(poolCentre))
-      const dawn = smoothstep(0.88, 1.0, shown)
+      const dawn = smoothstep(0.90, 1.0, travel)
       fogColor.copy(PALETTE.fogRuin).lerp(PALETTE.fogCity, restore)
       fogColor.lerp(PALETTE.dawn, dawn)
       fogColor.lerp(PALETTE.submerged, submersion)
-      ;(scene.fog as THREE.FogExp2).density = lerp(lerp(0.0013, 0.0010, restore), 0.0055, submersion)
+      ;(scene.fog as THREE.FogExp2).density = lerp(lerp(0.0013, 0.00062, restore), 0.0055, submersion)
       renderer.setClearColor(fogColor, 1)
-      renderer.toneMappingExposure = lerp(lerp(1.15, 1.32, dawn), 1.22, submersion)
+      renderer.toneMappingExposure = lerp(lerp(1.15, 1.32, dawn), 0.92, submersion)
       sunrise.intensity = dawn * 3.2
       sea.uniforms.uDawn.value = dawn
       sea.uniforms.uDusk.value = (1 - restore) * (1 - dawn)
@@ -1094,20 +1213,30 @@ export function createCityScene(
       moonGroup.scale.setScalar(lerp(1.0, 0.55, restore))
       ;(moonHalo.material as THREE.MeshBasicMaterial).opacity = lerp(0.10, 0.06, restore)
       hemi.color.copy(PALETTE.skyRuin).lerp(PALETTE.skyCity, restore)
-      hemi.intensity = lerp(0.6, 0.9, restore)
+      hemi.intensity = lerp(0.6, 1.35, restore)
       counter.intensity = lerp(0.9, 1.5, restore) * (1 - dawn * 0.6)
-      cityFill.intensity = lerp(1700, 3600, restore)
+      // From outside this lamp is the sphere's inner glow. From inside the
+      // camera sits a few metres off it with inverse-square falloff, so at
+      // full strength it blows the whole interior out — it dims right down
+      // once the lens is in the water.
+      cityFill.intensity = lerp(1700, 3600, restore) * lerp(1, 0.07, submersion)
       // The interior glow is meant to be read from outside. With the camera
       // inside the sphere it is an additive shell wrapped around the lens and
       // whites out the whole frame, so it goes away while submerged.
       coreMaterial.uniforms.uGain.value = lerp(1.0, 1.35, restore) * (1.0 - submersion)
       // the pool fills over its own slice of the scroll
-      const fill = smoothstep(0.10, 0.50, shown)
+      const fill = smoothstep(0.08, 0.42, travel)
       poolFront.value = lerp(POOL.y - POOL_RADIUS - 2, POOL.y + POOL_RADIUS + 2, fill)
       coreMaterial.uniforms.uFill.value = poolFront.value
-      rimFill.intensity = lerp(300, 5200, restore)
+      rimFill.intensity = lerp(300, 5200, restore) * lerp(1, 0.30, submersion)
       sea.uniforms.uRestore.value = restore
-      materials.water.emissiveIntensity = lerp(0.30, 0.05, submersion)
+      materials.water.emissiveIntensity = lerp(0.30, 0.0, submersion)
+      // The nets and the scoreboard face are additive white. Fine across the
+      // bowl; inside the sphere they are a metre from the lens and bloom into
+      // a white wall, so they come down to a readable level.
+      materials.neon.opacity = lerp(1, 0.42, submersion)
+      // seen from within, the meniscus and the foam sit right on the lens
+      poolFoam.value = 1 - submersion
       materials.water.opacity = 1
 
       // the swarm peaks while the cladding is actually filling in
@@ -1115,8 +1244,16 @@ export function createCityScene(
       moteUniforms.uSurge.value = Math.sin(restore * Math.PI) ** 0.7
       moteUniforms.uRestore.value = restore
       moteUniforms.uScale.value = lerp(1, 1.25, restore)
+      // the swarm's heading turns roughly twice over the length of the scroll
+      const flowAngle = travel * Math.PI * 3.4
+      const flowStrength = 0.22 + 0.30 * (0.5 + 0.5 * Math.sin(travel * Math.PI * 2.2))
+      moteUniforms.uFlow.value.set(
+        Math.cos(flowAngle) * flowStrength,
+        0.18 * Math.sin(travel * Math.PI * 1.6),
+        Math.sin(flowAngle) * flowStrength,
+      )
 
-      if (composer) composer.render(dt)
+      if (composer) composer.render(step)
       else renderer.render(scene, camera)
     },
 

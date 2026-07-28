@@ -83,6 +83,7 @@ function start(): Cleanup {
     return () => root.classList.remove('is-static')
   }
 
+  const bootEl = root.querySelector<HTMLElement>('[data-city-boot]')
   const canvas = root.querySelector<HTMLCanvasElement>('[data-city-canvas]')
   const stageEl = root.querySelector<HTMLElement>('[data-city-stage]')
   const hintEl = root.querySelector<HTMLElement>('[data-city-hint]')
@@ -108,6 +109,52 @@ function start(): Cleanup {
   track.setAttribute('aria-hidden', 'true')
 
   const cleanups: Cleanup[] = []
+
+  // ---- loading screen ------------------------------------------------------
+  // Only from here on: `tier === 'off'` and a page with no panels have already
+  // returned, so by this point we are genuinely going to try to build a scene
+  // and a reader looking at a blank gradient deserves to be told why.
+  const bootFill = bootEl?.querySelector<HTMLElement>('[data-city-boot-fill]') ?? null
+  const bootNote = bootEl?.querySelector<HTMLElement>('[data-city-boot-note]') ?? null
+  let bootShown = 0
+  let bootCrawl = 0
+  let bootGone = false
+
+  const setBoot = (v: number) => {
+    // only ever forwards, so a late byte count cannot rewind the bar
+    bootShown = Math.max(bootShown, clamp01(v))
+    if (bootFill) bootFill.style.width = `${(bootShown * 100).toFixed(1)}%`
+  }
+
+  if (bootEl) {
+    document.body.appendChild(bootEl)
+    bootEl.hidden = false
+    // Downloading the model is most of the wait but not all of it, and some
+    // servers send no Content-Length at all. This inches forward on its own so
+    // the bar is never simply frozen, and stops short of the end so arriving
+    // still means something.
+    bootCrawl = window.setInterval(() => setBoot(bootShown + (0.86 - bootShown) * 0.06), 220)
+  }
+
+  const dismissBoot = (ok: boolean) => {
+    if (bootGone) return
+    bootGone = true
+    window.clearInterval(bootCrawl)
+    if (!bootEl) return
+    if (ok) {
+      setBoot(1)
+      if (bootNote) bootNote.textContent = 'ready'
+      bootEl.classList.add('is-done')
+      window.setTimeout(() => bootEl.remove(), 700)
+    } else {
+      bootEl.remove()
+    }
+  }
+  cleanups.push(() => {
+    window.clearInterval(bootCrawl)
+    bootEl?.remove()
+  })
+
   let scene: CityScene | null = null
   let index: ReturnType<typeof createIndex> | null = null
   let raf = 0
@@ -165,19 +212,111 @@ function start(): Cleanup {
     scene?.resize(width, height, dpr)
   }
 
+  // ---- snapping ------------------------------------------------------------
+  // Each chapter has a composed shot waiting for it, so the scroll should come
+  // to rest on one rather than anywhere in between. This settles the scroller
+  // onto the nearest chapter once the reader stops, instead of hijacking the
+  // gesture while it is happening.
+  let snapTimer = 0
+  let snapRaf = 0
+  let snapping = false
+
+  const chapterTop = (i: number) => {
+    const span = scrollSpan()
+    const n = SECTIONS.length
+    return (span * (Math.max(0, Math.min(n - 1, i)) + 0.5)) / n
+  }
+
+  /**
+   * Tweened by hand rather than with `scrollTo({ behavior: 'smooth' })`. The
+   * native version gives no completion signal, so the "am I still snapping?"
+   * guard had to be a guessed timeout — and when that expired mid-flight the
+   * snap's own scroll events re-triggered it and the two fought to a standstill
+   * short of the target.
+   */
+  const snapTo = (top: number, ms = 480) => {
+    cancelAnimationFrame(snapRaf)
+    window.clearTimeout(snapTimer)
+    const from = scroller.scrollTop
+    const delta = top - from
+    if (Math.abs(delta) < 2) {
+      // already there — but the flag has to be cleared, or every later snap is
+      // blocked by a snap that never ran
+      snapping = false
+      return
+    }
+    snapping = true
+    const t0 = performance.now()
+    const step = () => {
+      const k = clamp01((performance.now() - t0) / ms)
+      // ease-out-cubic: quick to leave, gentle to arrive
+      scroller.scrollTop = from + delta * (1 - (1 - k) ** 3)
+      if (k < 1) {
+        snapRaf = requestAnimationFrame(step)
+        return
+      }
+      scroller.scrollTop = top
+      snapping = false
+      // A wheel gesture leaves the browser running its own smooth-scroll
+      // animation, which keeps writing scrollTop underneath the tween and can
+      // drag it straight back off the chapter. Check where we actually ended
+      // up once that has died down, and go again if it stole the landing.
+      window.setTimeout(() => {
+        if (!snapping && Math.abs(scroller.scrollTop - top) > 4) scheduleSnap()
+      }, 140)
+    }
+    snapRaf = requestAnimationFrame(step)
+  }
+
+  function scheduleSnap() {
+    window.clearTimeout(snapTimer)
+    snapTimer = window.setTimeout(() => {
+      if (snapping) return
+      const span = scrollSpan()
+      if (span <= 0) return
+      const i = Math.round((scroller.scrollTop / span) * SECTIONS.length - 0.5)
+      snapTo(chapterTop(i))
+    }, 220)
+  }
+  cleanups.push(() => {
+    window.clearTimeout(snapTimer)
+    cancelAnimationFrame(snapRaf)
+  })
+
   const onScroll = () => {
     const p = readProgress()
     scene?.setProgress(p)
     layoutPanels(p)
     document.documentElement.classList.toggle('city-scrolled', p > 0.012)
+    if (!snapping) scheduleSnap()
+  }
+
+  /**
+   * Wheel is handled by hand, and the browser's own scrolling is cancelled.
+   *
+   * Not for feel — for control. A wheel gesture leaves Chrome running a smooth
+   * -scroll animation of its own for a few hundred milliseconds afterwards,
+   * which keeps writing scrollTop after the reader has stopped. The snap would
+   * land on a chapter and then be dragged straight off it again by that
+   * animation. Applying the delta ourselves means there is only ever one thing
+   * moving the scroller.
+   */
+  const wheelPixels = (e: WheelEvent) =>
+    e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * scroller.clientHeight : e.deltaY
+
+  const onWheel = (e: WheelEvent) => {
+    e.preventDefault()
+    cancelAnimationFrame(snapRaf)
+    snapping = false
+    const max = scrollSpan()
+    scroller.scrollTop = Math.max(0, Math.min(max, scroller.scrollTop + wheelPixels(e)))
+    scheduleSnap()
   }
 
   // The navbar sits above the scroller, so a wheel over it would otherwise do
   // nothing. Hand those deltas to the scroller instead.
   const chrome = document.getElementById('top-row')
-  const onChromeWheel = (e: WheelEvent) => {
-    scroller.scrollTop += e.deltaY
-  }
+  const onChromeWheel = onWheel
 
   // Page keys should work wherever focus happens to be on this page.
   const onKey = (e: KeyboardEvent) => {
@@ -196,7 +335,11 @@ function start(): Cleanup {
     const delta = step[e.key]
     if (delta === undefined) return
     e.preventDefault()
-    scroller.scrollBy({ top: delta, behavior: 'smooth' })
+    const span = scrollSpan()
+    const here = Math.round((scroller.scrollTop / span) * SECTIONS.length - 0.5)
+    // page and arrow keys move a whole chapter, so they land where the shots are
+    window.clearTimeout(snapTimer)
+    snapTo(chapterTop(here + Math.sign(delta)), 600)
   }
 
   /** Take over the viewport. Returns false if the layout could not be trusted. */
@@ -227,14 +370,16 @@ function start(): Cleanup {
     staged = true
 
     index = createIndex(document.body, i => {
-      scroller.scrollTo({ top: (scrollSpan() * (i + 0.5)) / SECTIONS.length, behavior: 'smooth' })
+      window.clearTimeout(snapTimer)
+      snapTo(chapterTop(i), 700)
     })
 
     scroller.addEventListener('scroll', onScroll, { passive: true })
+    scroller.addEventListener('wheel', onWheel, { passive: false })
     window.addEventListener('resize', resize)
     window.addEventListener('orientationchange', resize)
     window.visualViewport?.addEventListener('resize', resize)
-    chrome?.addEventListener('wheel', onChromeWheel, { passive: true })
+    chrome?.addEventListener('wheel', onChromeWheel, { passive: false })
     window.addEventListener('keydown', onKey)
 
     resize()
@@ -248,6 +393,7 @@ function start(): Cleanup {
   const leaveStage = () => {
     if (staged) {
       scroller.removeEventListener('scroll', onScroll)
+      scroller.removeEventListener('wheel', onWheel)
       window.removeEventListener('resize', resize)
       window.removeEventListener('orientationchange', resize)
       window.visualViewport?.removeEventListener('resize', resize)
@@ -274,6 +420,7 @@ function start(): Cleanup {
 
   const giveUp = (why: unknown) => {
     console.warn('[city] falling back to the static layout:', why)
+    dismissBoot(false)
     cancelAnimationFrame(raf)
     leaveStage()
     try {
@@ -294,13 +441,14 @@ function start(): Cleanup {
   void import('@components/home/city/scene')
     .then(({ createCityScene }) => {
       if (disposed) return
-      scene = createCityScene(canvas, { tier })
+      scene = createCityScene(canvas, { tier, onProgress: setBoot })
       resize()
 
       const loop = () => {
         raf = requestAnimationFrame(loop)
         const now = performance.now()
-        const dt = Math.min(0.05, (now - last) / 1000)
+        // raw elapsed — the scene clamps it where clamping is what it wants
+        const dt = (now - last) / 1000
         last = now
         try {
           scene?.render(dt)
@@ -317,6 +465,9 @@ function start(): Cleanup {
           return
         }
         raf = requestAnimationFrame(loop)
+        // one frame drawn before the curtain lifts, so the reveal is the scene
+        // and not a black canvas
+        requestAnimationFrame(() => requestAnimationFrame(() => dismissBoot(true)))
       })
     })
     .catch(err => {

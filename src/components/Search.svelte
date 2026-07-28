@@ -1,9 +1,36 @@
 <script lang="ts">
 import { onMount } from 'svelte'
+
+type SearchResult = {
+  url: string
+  meta: {
+    title: string
+  }
+  excerpt: string
+}
+
+type Pagefind = {
+  search: (keyword: string) => Promise<{
+    results: {
+      data: () => Promise<SearchResult>
+    }[]
+  }>
+  options: (options: { excerptLength: number }) => Promise<void>
+  init: () => void
+}
+
+declare global {
+  interface Window {
+    pagefind?: Pagefind
+    pagefindLoading?: Promise<Pagefind>
+  }
+}
+
 let keywordDesktop = ''
 let keywordMobile = ''
-let result = []
-const fakeResult = [
+let result: SearchResult[] = []
+const pagefindPath = '/pagefind/pagefind.js'
+const fakeResult: SearchResult[] = [
   {
     url: '/',
     meta: {
@@ -22,20 +49,42 @@ const fakeResult = [
 ]
 
 let search = (keyword: string, isDesktop: boolean) => {}
+let searchSerial = 0
+
+const loadPagefind = async () => {
+  if (window.pagefind) return window.pagefind
+
+  window.pagefindLoading ??= import(pagefindPath).then(async pagefind => {
+    await pagefind.options({
+      excerptLength: 20,
+    })
+    pagefind.init()
+    window.pagefind = pagefind
+    return pagefind
+  })
+
+  return window.pagefindLoading
+}
 
 onMount(() => {
   search = async (keyword: string, isDesktop: boolean) => {
     let panel = document.getElementById('search-panel')
     if (!panel) return
 
-    if (!keyword && isDesktop) {
-      panel.classList.add('closed')
+    const trimmedKeyword = keyword.trim()
+    if (!trimmedKeyword) {
+      result = []
+      if (isDesktop) {
+        panel.classList.add('closed')
+      }
       return
     }
 
-    let arr = []
+    const currentSerial = ++searchSerial
+    let arr: SearchResult[] = []
     if (import.meta.env.PROD) {
-      const ret = await pagefind.search(keyword)
+      const pagefind = await loadPagefind()
+      const ret = await pagefind.search(trimmedKeyword)
       for (const item of ret.results) {
         arr.push(await item.data())
       }
@@ -44,8 +93,11 @@ onMount(() => {
       arr = fakeResult
     }
 
+    if (currentSerial !== searchSerial) return
+
     if (!arr.length && isDesktop) {
       panel.classList.add('closed')
+      result = []
       return
     }
 
@@ -53,6 +105,10 @@ onMount(() => {
       panel.classList.remove('closed')
     }
     result = arr
+  }
+
+  if (import.meta.env.PROD) {
+    loadPagefind().then(pagefind => pagefind.search(''))
   }
 })
 
