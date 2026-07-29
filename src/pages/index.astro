@@ -4,53 +4,76 @@ import { i18n } from '../i18n/translation'
 import I18nKey from '../i18n/i18nKey'
 import { profileConfig } from '../config'
 
-import { sections } from '@components/home/data'
-import Section from '@components/home/Section.astro'
-import Divider from '@components/home/Divider.astro'
-import Hero from '@components/home/sections/Hero.astro'
+import { SECTIONS } from '@components/home/city/config'
+import CityStage from '@components/home/CityStage.astro'
+import CityHero from '@components/home/sections/CityHero.astro'
 import Now from '@components/home/sections/Now.astro'
 import Writing from '@components/home/sections/Writing.astro'
 import Skills from '@components/home/sections/Skills.astro'
 import ArtLink from '@components/home/sections/ArtLink.astro'
 
-import '../styles/home-margiela.css'
+import '../styles/home-city.css'
 
-const [, now, writing, skills, art] = sections
+const [hero, now, writing, skills, art] = SECTIONS
 ---
 
 <MainGridLayout title={i18n(I18nKey.home)} description={profileConfig.bio} slug="none">
-  <div class="mg">
-    <Hero />
+  <div class="city" data-city>
+    <CityStage />
 
-    <Divider />
-    <Section index={now.index} id={now.id} num={now.num} name={now.name}>
-      <Now />
-    </Section>
+    <div class="city-panels" data-city-panels>
+      <section class="city-sec" id={hero.id} data-city-sec="0" data-side={hero.side}>
+        <CityHero />
+      </section>
 
-    <Divider />
-    <Section index={writing.index} id={writing.id} num={writing.num} name={writing.name}>
-      <Writing />
-    </Section>
+      <section class="city-sec" id={now.id} data-city-sec="1" data-side={now.side}>
+        <div class="city-chap reveal">
+          <span class="city-chap-num">{now.num}</span>
+          <span class="city-chap-line"></span>
+          <span class="city-chap-name">{now.name}</span>
+        </div>
+        <Now />
+      </section>
 
-    <Divider />
-    <Section index={skills.index} id={skills.id} num={skills.num} name={skills.name}>
-      <Skills />
-    </Section>
+      <section class="city-sec" id={writing.id} data-city-sec="2" data-side={writing.side}>
+        <div class="city-chap reveal">
+          <span class="city-chap-num">{writing.num}</span>
+          <span class="city-chap-line"></span>
+          <span class="city-chap-name">{writing.name}</span>
+        </div>
+        <Writing />
+      </section>
 
-    <Divider />
-    <Section index={art.index} id={art.id} num={art.num} name={art.name}>
-      <ArtLink />
-    </Section>
+      <section class="city-sec" id={skills.id} data-city-sec="3" data-side={skills.side}>
+        <div class="city-chap reveal">
+          <span class="city-chap-num">{skills.num}</span>
+          <span class="city-chap-line"></span>
+          <span class="city-chap-name">{skills.name}</span>
+        </div>
+        <Skills />
+      </section>
+
+      <section class="city-sec" id={art.id} data-city-sec="4" data-side={art.side}>
+        <div class="city-chap reveal">
+          <span class="city-chap-num">{art.num}</span>
+          <span class="city-chap-line"></span>
+          <span class="city-chap-name">{art.name}</span>
+        </div>
+        <ArtLink />
+      </section>
+    </div>
+
+    <!-- supplies the scroll distance the camera path is mapped onto -->
+    <div class="city-spacer" aria-hidden="true"></div>
   </div>
 </MainGridLayout>
 
 <style lang="stylus">
-  .mg
+  .city
     position: relative
-    color: var(--mg-ink)
     font-family: 'Roboto', -apple-system, sans-serif
 </style>
 
 <script>
-  import '../scripts/home-margiela'
+  import '../scripts/home-city'
 </script>

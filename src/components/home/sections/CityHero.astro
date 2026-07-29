@@ -1,0 +1,109 @@
+---
+import { profileConfig } from '@/config'
+import { SECTIONS } from '../city/config'
+import '@fontsource-variable/jetbrains-mono'
+
+const last = SECTIONS[SECTIONS.length - 1]
+---
+<div class="mg-hero-inner">
+  <div class="mg-eyebrow reveal" style="--d: 0ms">
+    <span class="mg-stitches" aria-hidden="true">
+      <svg viewBox="0 0 44 14" width="44" height="14"><g stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+        <line x1="4" y1="2" x2="4" y2="12"></line><line x1="16" y1="2" x2="16" y2="12"></line>
+        <line x1="28" y1="2" x2="28" y2="12"></line><line x1="40" y1="2" x2="40" y2="12"></line>
+      </g></svg>
+    </span>
+    <span>INDEX · 00—{last.num} — TOKYO</span>
+  </div>
+
+  <h1 class="mg-name reveal" style="--d: 80ms">ryomak</h1>
+
+  <p class="mg-caption reveal" style="--d: 160ms">
+    <span class="mg-circle-mark" aria-hidden="true"></span> BACKEND ENGINEER
+  </p>
+  <p class="mg-bio reveal" style="--d: 220ms">{profileConfig.bio}</p>
+
+  <nav class="mg-social reveal" style="--d: 300ms">
+    {profileConfig.links.map(item => (
+      <a class="mg-link" href={item.url} target="_blank" rel="me noopener" data-magnetic>{item.name}</a>
+    ))}
+  </nav>
+</div>
+
+<style lang="stylus">
+  .mg-hero-inner
+    position: relative
+    z-index: 2
+
+  .mg-eyebrow
+    display: flex
+    align-items: center
+    gap: 0.9rem
+    font-family: 'JetBrains Mono Variable', monospace
+    font-size: 0.72rem
+    letter-spacing: 0.28em
+    color: var(--mg-muted)
+    margin-bottom: 1.6rem
+  .mg-stitches
+    color: var(--mg-ink)
+    opacity: 0.7
+    display: inline-flex
+
+  .mg-name
+    font-size: clamp(3.4rem, 11vw, 8rem)
+    font-weight: 300
+    line-height: 0.9
+    letter-spacing: -0.04em
+    margin: 0
+    color: var(--mg-ink)
+    cursor: default
+  .mg-caption
+    margin-top: 1.4rem
+    font-family: 'JetBrains Mono Variable', monospace
+    font-size: 0.9rem
+    letter-spacing: 0.24em
+    color: var(--mg-ink)
+    display: flex
+    align-items: center
+    gap: 0.7rem
+  .mg-circle-mark
+    width: 0.7rem
+    height: 0.7rem
+    border: 1.5px solid var(--mg-ink)
+    border-radius: 999px
+    display: inline-block
+    transform: rotate(-8deg)
+  .mg-bio
+    margin-top: 1rem
+    font-size: 0.95rem
+    color: var(--mg-muted)
+    letter-spacing: 0.02em
+
+  .mg-social
+    display: flex
+    flex-wrap: wrap
+    gap: 2rem
+    margin-top: 2.4rem
+  .mg-link
+    position: relative
+    font-family: 'JetBrains Mono Variable', monospace
+    font-size: 0.86rem
+    letter-spacing: 0.14em
+    color: var(--mg-ink)
+    text-transform: uppercase
+    padding-bottom: 0.3rem
+    will-change: transform
+  .mg-link::after
+    content: ""
+    position: absolute
+    left: 0
+    bottom: 0
+    width: 100%
+    height: 0
+    border-bottom: 1.5px dashed var(--mg-ink)
+    transform: scaleX(0)
+    transform-origin: left
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)
+  .mg-link:hover::after
+    transform: scaleX(1)
+</style>

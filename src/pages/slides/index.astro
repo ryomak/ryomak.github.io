@@ -1,0 +1,91 @@
+---
+import MainGridLayout from '@layouts/MainGridLayout.astro'
+import PageHeader from '@components/PageHeader.astro'
+import { getCollection } from 'astro:content'
+
+const decks = (await getCollection('slides', ({ data }) => import.meta.env.DEV || !data.draft))
+  .sort((a, b) => b.data.published.valueOf() - a.data.published.valueOf())
+
+const fmt = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+---
+
+<MainGridLayout title="Slides" description="Talks and slide decks" slug="none">
+  <main>
+    <PageHeader title="Slides" count={decks.length} countLabel="decks" />
+
+    <ul class="deck-list">
+      {decks.map((deck, i) => (
+        <li class="reveal card-base" style={`--d: ${i * 60}ms`}>
+          <a href={`/slides/${deck.slug}/`} data-no-swup>
+            <div class="deck-row">
+              <time class="deck-date">{fmt(deck.data.published)}</time>
+              {deck.data.event && <span class="deck-event">{deck.data.event}</span>}
+              <span class="deck-theme">{deck.data.theme}</span>
+            </div>
+            <h2 class="deck-name">{deck.data.title}</h2>
+            {deck.data.description && <p class="deck-desc">{deck.data.description}</p>}
+          </a>
+        </li>
+      ))}
+      {decks.length === 0 && <li class="deck-empty card-base">No decks yet.</li>}
+    </ul>
+  </main>
+</MainGridLayout>
+
+<style lang="stylus">
+  .deck-list
+    list-style: none
+    margin: 0
+    padding: 0
+    display: grid
+    gap: 1rem
+  .deck-list li
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)
+  .deck-list li:hover
+    transform: translateY(-3px)
+  .deck-list a
+    display: block
+    padding: 1.6rem 1.9rem
+    color: inherit
+  .deck-row
+    display: flex
+    align-items: center
+    gap: 0.6rem
+    margin-bottom: 0.5rem
+  .deck-date
+    font-family: 'JetBrains Mono Variable', ui-monospace, monospace
+    font-size: 0.8rem
+    color: rgba(130, 130, 130, 0.95)
+  .deck-event
+  .deck-theme
+    font-size: 0.7rem
+    font-weight: 700
+    letter-spacing: 0.03em
+    text-transform: uppercase
+  .deck-event
+    color: var(--primary)
+    padding: 0.12rem 0.5rem
+    border-radius: 999px
+    background: unquote('color-mix(in oklch, var(--primary) 14%, transparent)')
+  .deck-theme
+    color: rgba(140, 140, 140, 0.95)
+    padding: 0.12rem 0.45rem
+    border: 1px solid var(--line-divider)
+    border-radius: 999px
+  .deck-name
+    font-size: clamp(1.15rem, 2.2vw, 1.5rem)
+    font-weight: 700
+    line-height: 1.3
+    margin: 0
+    color: var(--deep-text)
+  .deck-list li:hover .deck-name
+    color: var(--primary)
+  .deck-desc
+    margin: 0.55rem 0 0
+    font-size: 0.92rem
+    color: rgba(140, 140, 140, 0.95)
+  .deck-empty
+    padding: 1.6rem 1.9rem
+    color: rgba(140, 140, 140, 0.95)
+</style>

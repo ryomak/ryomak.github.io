@@ -87,6 +87,18 @@ const enableBanner = siteConfig.banner.enable
         --float-panel-bg: #1a1917 !important;
     }
 
+    /* The theme never set a base text colour, so any element without an explicit
+       `color` (page headers, chapter/section headings, markdown headings, plain
+       text in cards) fell through to the UA default — black — which is
+       invisible now that the canvas is dark. Anchor inheritance to the palette. */
+    html,
+    body {
+        color: var(--deep-text);
+    }
+    h1, h2, h3, h4, h5, h6 {
+        color: var(--deep-text);
+    }
+
     /* Home is a full-width portfolio: hide the blog sidebar and span content.
        Toggled by class (not by SSR conditionals) so it survives swup navigation,
        which only swaps <main> and keeps this shell mounted. */
@@ -135,8 +147,8 @@ const enableBanner = siteConfig.banner.enable
         const path = location.pathname.replace(/\/+$/, '')
         const isHome = path === ''
         grid.classList.toggle('is-home-layout', isHome)
-        // Margiela theme applies to the home page only; reverts on navigation.
-        document.documentElement.classList.toggle('home-margiela', isHome)
+        // The Zanarkand night palette applies to the home page only; reverts on navigation.
+        document.documentElement.classList.toggle('home-city', isHome)
     }
     // Reveal-on-scroll for any `.reveal` element on the page.
     function initReveal() {

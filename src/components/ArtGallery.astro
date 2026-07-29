@@ -127,7 +127,9 @@ const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(
     padding: 0.6rem 1.1rem
     border-radius: 8px
     background: var(--primary)
-    color: white
+    /* --primary is near-white on the dark canvas, so the label has to take the
+       page colour rather than a hard-coded white */
+    color: var(--page-bg)
     font-size: 0.88rem
     font-weight: 600
     flex-shrink: 0
@@ -214,7 +216,7 @@ const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(
   .view-text
     font-size: 0.82rem
     font-weight: 600
-    color: white
+    color: var(--page-bg)
     padding: 0.4rem 1rem
     background: var(--primary)
     border-radius: 20px

@@ -24,3 +24,8 @@ pnpm-debug.log*
 
 .sass-cache
 .idea
+.env*
+
+# Blender preview renders
+.preview/
+_to_delete/

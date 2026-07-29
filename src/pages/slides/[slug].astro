@@ -1,0 +1,96 @@
+---
+/**
+ * A deck. Standalone on purpose: no navbar, no sidebar, no page chrome — the
+ * markdown is the whole page.
+ *
+ * The markdown was already split into <section class="slide"> by
+ * src/plugins/remark-slides.mjs, so everything here is presentation: a fixed
+ * 1280x720 stage scaled to fit the viewport (which is what keeps type sizes
+ * predictable), plus keyboard/touch navigation.
+ */
+import { getCollection } from 'astro:content'
+import '@fontsource/roboto/400.css'
+import '@fontsource/roboto/700.css'
+import '@fontsource-variable/jetbrains-mono'
+import '../../styles/slides.css'
+
+export async function getStaticPaths() {
+  const decks = await getCollection('slides', ({ data }) => import.meta.env.DEV || !data.draft)
+  return decks.map(deck => ({ params: { slug: deck.slug }, props: { deck } }))
+}
+
+const { deck } = Astro.props
+const { Content } = await deck.render()
+const deckTheme = `deck-theme-${deck.data.theme ?? 'midnight'}`
+---
+
+<!DOCTYPE html>
+<html lang="ja" class="deck-html">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{deck.data.title}</title>
+    <meta name="description" content={deck.data.description ?? deck.data.title} />
+    <link rel="stylesheet" href="https://cdn.staticfile.org/KaTeX/0.16.9/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous" />
+  </head>
+  <body class:list={['deck-body', deckTheme]}>
+    <main class="deck" data-deck aria-label={deck.data.title}>
+      <div class="deck-stage" data-deck-stage>
+        <Content />
+      </div>
+    </main>
+
+    <div class="deck-ui" data-deck-ui>
+      <a class="deck-home" href="/slides/" aria-label="All decks" target="_top" data-no-swup>←</a>
+      <button class="deck-tool" data-deck-thumbs-toggle aria-label="Thumbnails" title="Thumbnails (T)">▦</button>
+      <button class="deck-tool" data-deck-overview aria-label="Overview" title="Overview (O)">□</button>
+      <span class="deck-title">{deck.data.title}</span>
+      <span class="deck-clock" data-deck-clock>00:00</span>
+      <!-- touch devices have no keyboard and shouldn't have to guess at swiping -->
+      <button class="deck-nav" data-deck-prev aria-label="Previous slide">‹</button>
+      <span class="deck-count"><b data-deck-current>1</b> / <span data-deck-total>1</span></span>
+      <button class="deck-nav" data-deck-next aria-label="Next slide">›</button>
+      <button class="deck-tool" data-deck-fullscreen aria-label="Fullscreen" title="Fullscreen (F)">⛶</button>
+      <button class="deck-tool deck-tool-pdf" data-deck-print aria-label="Export PDF" title="Export PDF (P)">PDF</button>
+      <button class="deck-tool" data-deck-help-toggle aria-label="Shortcuts" title="Shortcuts (?)">?</button>
+    </div>
+    <div class="deck-progress" data-deck-progress aria-hidden="true"><i></i></div>
+
+    <aside class="deck-thumbs" data-deck-thumbs aria-label="Slide thumbnails" hidden>
+      <div class="deck-thumbs-head">
+        <span>Slides</span>
+        <button data-deck-thumbs-close aria-label="Close thumbnails">×</button>
+      </div>
+      <ol data-deck-thumbs-list></ol>
+    </aside>
+
+    <aside class="deck-presenter" data-deck-presenter aria-label="Presenter panel" hidden>
+      <div>
+        <span class="deck-presenter-kicker">current</span>
+        <strong data-deck-current-title></strong>
+      </div>
+      <div>
+        <span class="deck-presenter-kicker">next</span>
+        <strong data-deck-next-title></strong>
+      </div>
+    </aside>
+
+    <div class="deck-help" data-deck-help hidden>
+      <h2>Shortcuts</h2>
+      <dl>
+        <dt>→ / Space / J</dt><dd>next</dd>
+        <dt>← / K</dt><dd>previous</dd>
+        <dt>Home / End</dt><dd>first / last</dd>
+        <dt>O</dt><dd>overview</dd>
+        <dt>T</dt><dd>thumbnails</dd>
+        <dt>S</dt><dd>presenter panel</dd>
+        <dt>F</dt><dd>fullscreen / exit</dd>
+        <dt>Esc</dt><dd>exit fullscreen / close panel</dd>
+        <dt>P</dt><dd>export PDF</dd>
+        <dt>?</dt><dd>this panel</dd>
+      </dl>
+    </div>
+
+    <script src="../../scripts/deck.ts"></script>
+  </body>
+</html>

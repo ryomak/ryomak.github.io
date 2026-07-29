@@ -33,6 +33,10 @@ export const navBarConfig: NavBarConfig = {
     LinkPreset.Works,
     LinkPreset.Art,
     {
+      name: 'Slides',
+      url: '/slides/',
+    },
+    {
       name: 'GitHub',
       url: 'https://github.com/ryomak',
       external: true,

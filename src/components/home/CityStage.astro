@@ -1,0 +1,32 @@
+---
+// The WebGL stage for the top page. Purely decorative — every word on the page
+// lives in the sibling panels — so it is hidden from assistive tech. Until (or
+// unless) the scene loads, the gradient underneath stands in for it.
+//
+// At boot the script lifts these elements out to <body>; see
+// src/scripts/home-city.ts for why.
+---
+<div class="city-stage" data-city-stage aria-hidden="true">
+  <div class="city-stage-fallback"></div>
+  <canvas data-city-canvas></canvas>
+</div>
+
+{/*
+  The loading screen. Rendered hidden and only revealed by the script, so a
+  reader without JavaScript — or one whose device we have decided not to run
+  the stage on — never sees a loader for something that is not coming. It is
+  removed either when the stage takes over or when the page falls back.
+*/}
+<div class="city-boot" data-city-boot aria-hidden="true" hidden>
+  <div class="city-boot-inner">
+    <div class="city-boot-mark">
+      <i></i><i></i><i></i>
+    </div>
+    <div class="city-boot-bar"><span data-city-boot-fill></span></div>
+    <p class="city-boot-note" data-city-boot-note>loading</p>
+  </div>
+</div>
+
+<div class="city-hint" data-city-hint aria-hidden="true">
+  <span>SCROLL</span><i></i>
+</div>
