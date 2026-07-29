@@ -95,6 +95,54 @@ func draw(p *p5go.Canvas) {
 
 ---
 
+## Drawの考え方
+
+`Draw`は、毎フレーム画面を作り直す場所である
+
+- まず背景を塗り、前フレームの残像を消す
+- 状態変数を読み、今の座標や色を決める
+- 図形を描き、最後に状態を少しだけ更新する
+- うまくいかない時は、描画と状態更新を同じ関数に詰め込みすぎていないかを見る
+
+<div class="diagram">
+  <div class="node">Clear<small>背景</small></div>
+  <div class="arrow">→</div>
+  <div class="node">Read State<small>angle, mouse</small></div>
+  <div class="arrow">→</div>
+  <div class="node">Draw Shapes<small>図形</small></div>
+  <div class="arrow">→</div>
+  <div class="node">Update<small>次フレームへ</small></div>
+</div>
+
+---
+
+## 数字に名前をつける
+
+作品が直しやすいコードは、座標や速度の意味が読める
+
+```go
+const (
+	centerX = 320
+	centerY = 180
+	radius  = 80
+	speed   = 0.03
+)
+
+var angle float64
+
+func draw(p *p5go.Canvas) {
+	x := centerX + p.Cos(angle)*radius
+	y := centerY + p.Sin(angle)*radius
+	p.Circle(x, y, 24)
+	angle += speed
+}
+```
+
+- `0.03` のままだと、速さなのか角度なのか後から分からない
+- 作品レビューでは「数字を変えたら何が変わるか」を説明できる状態を目標にする
+
+---
+
 ## 実コード: 角度で動かす
 
 `art/go/ruby_image/main.go`では、グローバルな角度を少しずつ増やして回転を作っている
@@ -123,7 +171,7 @@ func draw(p *p5go.Canvas) {
 
 ## 実コード: 背景を作る
 
-Ruby作品は、背景も1本の命令ではなく、細い矩形を重ねてグラデーションにしている
+Ruby作品は、細い矩形を重ねて背景のグラデーションを作っている
 
 ```go
 func draw(p *p5go.Canvas) {
@@ -141,7 +189,7 @@ func draw(p *p5go.Canvas) {
 
 ## 実コードでよく出る命令
 
-ART配下の作品では、図形命令だけでなく座標変換とイベントをよく使っている
+ART配下の作品では、図形命令に座標変換とイベントを組み合わせている
 
 | 命令 | 使いどころ |
 | --- | --- |
@@ -152,6 +200,31 @@ ART配下の作品では、図形命令だけでなく座標変換とイベン�
 | `BeginShape` / `Vertex` / `EndShape` | 多角形を描く |
 | `MousePressed` | クリックで状態を変える |
 | `FrameRate` | アニメーション速度を決める |
+
+---
+
+## PushとPop
+
+座標変換を使う時は、影響範囲を閉じるだけでバグが減る
+
+| 書き方 | 起きること |
+| --- | --- |
+| `Translate`だけ | 後続の図形まで全部ずれる |
+| `Rotate`だけ | 後続の図形まで全部回る |
+| `Push` / `Pop`で囲む | その部品だけを動かせる |
+
+```go
+p.Push()
+p.Translate(150, 150)
+p.Rotate(angle)
+drawRuby(p)
+p.Pop()
+
+drawLabel(p) // 回転の影響を受けない
+```
+
+- キャラクター、目、腕、背景を別々に動かしたい時ほど `Push` / `Pop` が効く
+- 見た目が急に崩れた時は、`Pop` の抜けを最初に疑う
 
 ---
 
@@ -192,9 +265,24 @@ func (f *face) eye(p *p5go.Canvas, x, y float64) {
 
 ---
 
+## 最小作品の設計
+
+最初から複雑な絵を作らず、主役、動き、入力を1つずつ決める
+
+| 決めること | 例 |
+| --- | --- |
+| 主役 | 目、星、宝石、ボール |
+| 動き | 回る、揺れる、追いかける、増える |
+| 入力 | マウス位置、クリック、時間 |
+| 変化 | 色、サイズ、速度、数 |
+
+<div class="quote-panel">作品らしさは、「何が変わるか」が一目で分かることから生まれる。</div>
+
+---
+
 ## 詰まった時の見方
 
-動かない時は、コード全体ではなく「実行入口」と「描画関数」を見る
+動かない時は、まず「実行入口」と「描画関数」を見る
 
 - `main`から`p5go.Run`が呼ばれているか
 - `select {}`でWASM側の処理を止めずに待っているか
@@ -309,7 +397,7 @@ func mousePressed(p *p5go.Canvas) {
 
 ## 作品レビューの型
 
-うまい下手ではなく、次に変える一点を見つける
+次に変える一点を見つけるためにレビューする
 
 <div class="matrix">
   <div><h4>見た目</h4><p>主役が一目で分かるか。背景と色が近すぎないか。</p></div>
@@ -329,6 +417,18 @@ func mousePressed(p *p5go.Canvas) {
 | [p5go Editor](https://p5go-editor.ryomak.jp/) | ブラウザで書いて動かす |
 | [p5go GitHub](https://github.com/ryomak/p5go) | ライブラリのコードを見る |
 | [examples](https://github.com/ryomak/p5go/tree/main/example) | 次に真似する題材を探す |
+
+---
+
+## 完成の基準
+
+ワークショップでは、きれいな作品より説明できる作品を完成とする
+
+- 背景、主役、アクセントの色を説明できる
+- `Draw` の中で毎フレーム何が起きているか説明できる
+- 変数を1つ変えると、見た目がどう変わるか予測できる
+- マウスやクリックに対して、見た目の反応が1つ以上ある
+- 次に直すなら何を変えるかを1つ言える
 
 ---
 

@@ -28,8 +28,61 @@ const shareIcon = () => {
       return 'fa6-brands:square-x-twitter'
   }
 }
+
+const shareLabel = () => {
+  switch (platform) {
+    case 'x':
+      return 'Share on X'
+    case 'facebook':
+      return 'Share on Facebook'
+    case 'bukuma':
+      return 'Bookmark on Hatena'
+    default:
+      return 'Share'
+  }
+}
 ---
 
-<a href={shareUrl()} target="_blank" rel="noopener noreferrer" class="w-fit">
-    <Icon name=`${shareIcon()}` size="2rem"></Icon>
+<a href={shareUrl()} target="_blank" rel="noopener noreferrer" class="share-button" aria-label={shareLabel()}>
+    <Icon name=`${shareIcon()}` size={22} class="share-button-icon"></Icon>
 </a>
+
+<style>
+  .share-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.55rem;
+    height: 2.55rem;
+    border: 1px solid color-mix(in oklch, var(--primary) 28%, transparent);
+    border-radius: 0.75rem;
+    background: color-mix(in oklch, var(--primary) 10%, var(--card-bg));
+    color: var(--primary);
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .share-button:hover,
+  .share-button:focus-visible {
+    border-color: color-mix(in oklch, var(--primary) 70%, transparent);
+    background: color-mix(in oklch, var(--primary) 18%, var(--card-bg));
+    color: var(--deep-text);
+    transform: translateY(-1px);
+  }
+
+  :global(.dark) .share-button:hover,
+  :global(.dark) .share-button:focus-visible {
+    color: white;
+  }
+
+  .share-button:active {
+    transform: translateY(0);
+  }
+
+  .share-button-icon {
+    display: block;
+  }
+</style>

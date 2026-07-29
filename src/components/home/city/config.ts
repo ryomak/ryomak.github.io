@@ -1,8 +1,10 @@
-// Camera choreography for the Zanarkand top page.
+// Camera choreography and scroll mapping for the Zanarkand top page.
 //
-// The GLB is exported Y-up, so a point authored in Blender as (bx, by, bz)
-// arrives here as (bx, bz, -by). Everything below is already in three.js space:
-// +X is the direction of travel, +Y is height, sea level is Y = 0.
+// The model is authored in Blender, which is Z-up, and exported Y-up: a point
+// written there as (bx, by, bz) arrives here as (bx, bz, -by). Everything in
+// this file is already in three.js space — +Y is height, sea level is Y = 0,
+// the ruin fills a basin about 620 units across centred on the origin, and the
+// opening shot stands on its eastern rim looking west into the sunset.
 
 export type Waypoint = {
   /** camera position */
@@ -11,92 +13,77 @@ export type Waypoint = {
   target: [number, number, number]
 }
 
+/** Basin radius, mirrored from the generator. */
+export const BASIN_R = 620
+
 /**
- * The flight path. Sampled as a Catmull-Rom curve against scroll progress, so
- * the shape of this list is the shape of the whole experience:
+ * The flight path.
  *
- *   a wide pass over the water → spiralling in past the arms → through the
- *   sphere itself → back out and up as dawn comes up
+ * It is one move: from a standing shot on the rim, down across the water, in
+ * among the ruins as they start to come back, and up and away as the finished
+ * city closes over. Nothing doubles back — a scroll that retraces its own path
+ * feels like a mistake in the page rather than a decision.
  */
+/**
+ * The orbit.
+ *
+ * One continuous turn around the arena, and that is the whole camera. The
+ * previous version cut the scroll into five and parked at each — and every
+ * stop broke the thread: you were somewhere, then you were somewhere else,
+ * and nothing connected the two. A single circle means the reader always
+ * knows where they are, because they never left.
+ *
+ * It starts on the composed opening frame — out on the rim, low, with the
+ * dead city across the middle and the sun on the horizon — and tightens and
+ * rises as it comes round, so the last third is over the city rather than
+ * looking at it from the same distance as the first.
+ */
+export const ORBIT = {
+  /** where it starts, in radians, measured the same way the model is laid out */
+  startAngle: 0,
+  /** a full turn */
+  turns: 1,
+  /** distance from the axis, at the start and at the end */
+  // Ends well inside the district ring and well outside the arena itself, so
+  // the last of the turn is a close pass round the sphere and the camera
+  // never has anything to fly through.
+  // Measured, not calculated: at 265 the sphere filled nine tenths of the
+  // frame at three quarters of the way through. Whatever the arithmetic said,
+  // the picture said stand further back.
+  radius: [719, 452] as [number, number],
+  /** height, likewise */
+  height: [143, 155] as [number, number],
+  /** what it looks at, rising as the city does */
+  // The sphere sits at (0, 103, 0) once the city model is scaled and lifted,
+  // so that is exactly where the shot ends up pointed — it was drifting to
+  // (0, 104, 0) from a target that had never been checked against the model.
+  // Not the sphere's own centre. Aimed there, the stands fell out of the
+  // bottom of the frame and the shot became a portrait of a ball — the arena
+  // is the thing that was built, and it has to be in the picture. A dozen
+  // units lower puts the sphere just above the middle and the bowl under it.
+  target: [
+    [-341, 18, -12],
+    [0, 91, 0],
+  ] as [[number, number, number], [number, number, number]],
+}
+
+/** Kept for the fallback path; the orbit is what actually drives the camera. */
 export const WAYPOINTS: Waypoint[] = [
-  // wide and high: the stadium alone on the water
-  { pos: [300.0, 156, 0.0], target: [0, 40, 0] },
-  { pos: [129.7, 124, 192.4], target: [0, 40, 0] },
-  // down to rim height, the blades sweeping past
-  { pos: [-88.0, 104, 168.0], target: [0, 40, 0] },
-  { pos: [-152.0, 86, 18.0], target: [0, 34, 0] },
-  // Swinging round to line up with the pool's long axis — and staying above
-  // the colonnade while it does. At rim height the approach threads between
-  // the columns and the shot is mostly pillar; the arc rides over them and
-  // drops onto the sphere from above instead.
-  { pos: [-44.0, 74, -96.0], target: [0, 30, 0] },
-  { pos: [66.0, 60, -36.0], target: [0, 28, 0] },
-  // held just outside the water, coming down onto it
-  { pos: [40.0, 34, 0.0], target: [0, 27, 0] },
-  // Inside, and lingering. Placed so the scoreboard hangs dead ahead with a
-  // goal at each edge of frame — the arrangement only reads from this narrow
-  // band of positions, so the path is built around it rather than the other way
-  // round, and two near-identical points hold the camera there.
-  { pos: [16.0, 27, 0.0], target: [-16, 31, 0] },
-  { pos: [2.0, 27, 0.0], target: [-18, 31, 0] },
-  // out through the far wall
-  { pos: [-22.0, 27, -3.0], target: [-60, 30, -16] },
-  { pos: [-68.9, 48, -12.2], target: [0, 32, 0] },
-  { pos: [-70.7, 90, -84.3], target: [0, 30, 0] },
-  // rising away as dawn comes up
-  { pos: [0.0, 158, -95.0], target: [0, 25, 0] },
+  { pos: [719, 143, 0], target: [-341, 18, -12] },
+  { pos: [300, 205, 0], target: [0, 104, 0] },
 ]
 
-/**
- * Where the camera settles for each chapter, as a parameter along the flight
- * path. Scroll is remapped through these, so the camera eases to a stop on a
- * composed shot while a chapter is being read and only travels between them.
- * Without this the camera drifts continuously and never lands anywhere.
- */
-// Chosen against the path, not by eye: 0.65–0.75 threads the colonnade and the
-// stands, so a stop there parks the lens inside a column. The dive through that
-// band is a transit between chapters instead.
-export const SECTION_STOPS = [0.03, 0.20, 0.58, 0.83, 0.99]
+/** Chapters framed by hand rather than by the curve. `null` means "on the path". */
+export const SECTION_CAMS: (Waypoint | null)[] = [null, null, null, null, null]
 
-
+/** Vertical field of view. Narrow enough that the far towers keep their scale. */
+export const FOV = 38
 
 /**
- * Chapters that are not framed by the flight path but by hand.
- *
- * The shot from inside the sphere only works from a narrow band of positions —
- * the scoreboard has to hang dead ahead with a goal at each edge — and hunting
- * for the parameter along the curve that happens to land there is fragile:
- * every edit to a waypoint re-parameterises the whole path and moves it. So
- * this chapter states its camera outright, and the renderer eases from the
- * curve into it as the chapter arrives.
- *
- * `null` means "wherever the path is". Indices match SECTIONS.
+ * The sun. Bearing 180° in the generator's frame — dead ahead of the opening
+ * camera — and barely above the horizon.
  */
-export const SECTION_CAMS: (Waypoint | null)[] = [
-  null,
-  null,
-  // Well outside, and high. The path's own parameter here rides in among the
-  // colonnade — at 140 units the concourse alone fills the frame — so this
-  // stands right off and takes the bowl whole, with the waterfront behind it.
-  { pos: [236.0, 122.0, -200.0], target: [0, 34, 0] },
-  // Inside the water. The scoreboard sits at (-9.7, 33.4) with the two goals at
-  // z = ±9.5, so looking down -X from just inside the near wall puts the board
-  // ahead and a goal at either edge of frame.
-  { pos: [17.0, 26.0, 0.0], target: [-9.7, 33.4, 0.0] },
-  null,
-]
-
-/** Radius of the sphere pool, for the shot through the water. */
-export const POOL_RADIUS = 21
-
-/** Vertical field of view. Wide enough that landmarks read as whole objects. */
-export const FOV = 46
-
-/** Where the sphere pool sits, for the framing shot and the water reflection. */
-export const POOL = { x: 0, y: 25, z: 0, half: 21 }
-
-/** The bowl the camera orbits. */
-export const STADIUM = { x: 0, z: 0, radius: 58, rimHeight: 31 }
+export const SUN_DIR: [number, number, number] = [-0.9993, 0.0384, 0]
 
 export type SectionSpec = {
   id: string
@@ -109,10 +96,7 @@ export type SectionSpec = {
   side: 'left' | 'right'
 }
 
-/**
- * The five chapters. Content is unchanged from the previous top page — only the
- * way it is revealed is new. Scroll progress is split evenly between them.
- */
+/** The five chapters. Scroll progress is split evenly between them. */
 export const SECTIONS: SectionSpec[] = [
   { id: 'sec-0', num: '00', name: '', label: 'HOME', side: 'left' },
   { id: 'sec-1', num: '01', name: 'Now', label: 'NOW', side: 'left' },
@@ -124,19 +108,33 @@ export const SECTIONS: SectionSpec[] = [
 /** Which side each chapter's panel sits on, so the shot can lean the other way. */
 export const SECTION_SIDES = SECTIONS.map(s => s.side)
 
-/**
- * Scroll height, in viewport heights per chapter. The orbit is one continuous
- * move, so this is purely how long the reader has to spend on it — 125 made the
- * page feel like a chore to get through.
- */
+/** Scroll height, in viewport heights per chapter. */
 export const VH_PER_SECTION = 78
 
 /**
- * How far through the scroll the city finishes rebuilding itself. The ruin is
- * whole again a little before the end so the final chapter plays against the
- * restored skyline rather than during the transition.
+ * How far through the scroll the city rebuilds itself.
+ *
+ * It starts late and finishes early on purpose: the reader gets the ruin to
+ * themselves for the first chapter, and the restored city to themselves for the
+ * last, and the transformation happens in the middle where they are looking at
+ * it rather than reading over it.
  */
-export const RESTORE_RANGE: [number, number] = [0.20, 0.86]
+export const RESTORE_RANGE: [number, number] = [0.18, 0.68]
 
 /** Height, in world units, the restoration front travels as it rises. */
-export const RESTORE_FRONT: [number, number] = [-24, 300]
+export const RESTORE_FRONT: [number, number] = [-40, 560]
+
+/**
+ * When the sky turns. The restored Zanarkand is a night city — the reference
+ * is all starlight and window light — so the sunset burns down as the city
+ * comes back, and the last chapter plays under stars.
+ */
+export const NIGHT_RANGE: [number, number] = [0.24, 0.70]
+
+/**
+ * The pyreflies do not arrive — they are simply always there.
+ *
+ * Kept as a range so the renderer's plumbing stays the same, but both ends are
+ * zero: full strength from the first frame.
+ */
+export const PYRE_RANGE: [number, number] = [0, 0]

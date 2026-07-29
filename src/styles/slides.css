@@ -237,6 +237,18 @@
   margin: 0.55rem 0;
   padding-left: 1.6rem;
 }
+.slide ul {
+  list-style: disc;
+}
+.slide ul ul {
+  list-style: circle;
+}
+.slide ol {
+  list-style: decimal;
+}
+.slide ol ol {
+  list-style: lower-alpha;
+}
 .slide ul li + li,
 .slide ol li + li {
   margin-top: 0.18rem;

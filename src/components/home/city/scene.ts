@@ -1,965 +1,379 @@
-// The Zanarkand scene: a drowned city that rebuilds itself as the page scrolls.
+// The Zanarkand stage.
 //
-// Written against three.js directly rather than react-three-fiber because this
-// theme navigates with swup, which swaps <main> without re-hydrating framework
-// islands. A plain module gives us an explicit boot/teardown pair that survives
-// those swaps (see src/scripts/home-city.ts).
+// One model, two states. Everything in the file is either the ruin the page
+// opens on, the city it becomes, or the machinery that carries one into the
+// other:
+//
+//   * the sky, which burns down from a sunset to a starfield;
+//   * a restoration front, a world-space height above which the restored
+//     layers of the model are simply not drawn, which rises as the page is
+//     scrolled so the city rebuilds itself from the waterline up;
+//   * pyreflies, which are the only thing on screen that is alive.
+//
+// The model arrives Y-up: a point authored in Blender as (bx, by, bz) is here
+// (bx, bz, -by). Sea level is Y = 0.
 
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import {
   FOV,
-  POOL,
-  POOL_RADIUS,
+  PYRE_RANGE,
+  NIGHT_RANGE,
   RESTORE_FRONT,
   RESTORE_RANGE,
-  SECTION_CAMS,
-  SECTION_SIDES,
-  SECTION_STOPS,
-  STADIUM,
+  SECTIONS,
+  ORBIT,
+  SUN_DIR,
   WAYPOINTS,
 } from './config'
 
-const MODEL_URL = '/models/zanarkand.glb'
+// Two models, one scene.
+//
+// The ruin is the new procedural build: terrain, broken towers, the memorial,
+// the sunset. The city it becomes is the earlier model — a denser, better
+// stadium and waterfront than the generator produces — brought in whole and
+// revealed by the restoration front. Keeping them separate means each can be
+// the best version of itself rather than two states of a compromise.
+const RUIN_URL = '/models/zanarkand2.glb'
+const CITY_URL = '/models/zanarkand3.glb'
+const DRACO_PATH = '/draco/'
+
+/**
+ * How the city model is placed inside the ruin's basin.
+ *
+ * It is authored around an arena of radius 110 with its waterfront running out
+ * to about 880 and a silhouette ring beyond that. The basin is 620 across, so
+ * it comes down to three quarters — which puts the arena at 82, the near
+ * districts inside the rim, and the far ring standing over it.
+ */
+const CITY_SCALE = 0.75
+const CITY_LIFT = 26
+
+type Tier = 'high' | 'low'
+
+export type CityScene = {
+  ready: Promise<void>
+  render(dt: number): void
+  resize(width: number, height: number, dpr: number): void
+  setProgress(p: number): void
+  dispose(): void
+}
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v)
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const smoothstep = (a: number, b: number, x: number) => {
   const t = clamp01((x - a) / (b - a || 1e-6))
   return t * t * (3 - 2 * t)
 }
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 
-/**
- * The arc runs dusk → night → dawn.
- *
- * The ruin opens at sunset, low and warm, the way the Zanarkand ruins are shown
- * — the structure in silhouette against a burning horizon. As the stadium
- * rebuilds, the light cools into the night the living city belongs to, and the
- * last chapter breaks into dawn again.
- */
+// ---------------------------------------------------------------- the palette
+// Two of everything: where the colour sits over the ruin, and where it sits
+// over the finished city. The scroll mixes between them.
 const PALETTE = {
-  fogRuin: new THREE.Color(0x160f18),
-  fogCity: new THREE.Color(0x0b2a34),
-  moonRuin: new THREE.Color(0xffa557),
-  moonCity: new THREE.Color(0xcfe4f2),
-  skyRuin: new THREE.Color(0x5c3126),
-  skyCity: new THREE.Color(0x1d6a68),
-  ground: new THREE.Color(0x06131a),
-  neon: new THREE.Color(0x63f0d8),
-  neonWarm: new THREE.Color(0xffb45e),
-  moon: new THREE.Color(0xffd9a8),
-  water: new THREE.Color(0x0d5a5e),
-  submerged: new THREE.Color(0x07414f),
-  dawn: new THREE.Color(0x2a2233),
-  dawnLight: new THREE.Color(0xffb583),
+  sunWarm: new THREE.Color(0xffb066),
+  moonCool: new THREE.Color(0x9fc6ff),
+  ambientDusk: new THREE.Color(0xff8a45),
+  ambientNight: new THREE.Color(0x2a4a70),
+  fogDusk: new THREE.Color(0x8a3a12),
+  fogNight: new THREE.Color(0x0a1420),
 }
 
-export type Tier = 'high' | 'low'
+// ------------------------------------------------------------------- the sky
+/**
+ * A painted sky, not a simulated one.
+ *
+ * The reference is a matte painting: a hard orange band on the horizon, heavy
+ * cloud over it, the sun sitting in the gap. A physically-correct atmosphere at
+ * two degrees of elevation renders a flat blue-grey, which is accurate and
+ * useless. So the gradient, the sun, the cloud bands and the stars are all
+ * written out by hand here, and the same `uNight` that turns the sky over is
+ * the one driving the lights and the fog.
+ */
+function createSky(sunDir: THREE.Vector3) {
+  const uniforms = {
+    uSun: { value: sunDir.clone() },
+    uNight: { value: 0 },
+    uTime: { value: 0 },
+  }
+  const material = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    depthWrite: false,
+    fog: false,
+    uniforms,
+    vertexShader: /* glsl */ `
+      varying vec3 vDir;
+      void main() {
+        vDir = position;
+        // the dome rides with the camera, so it can never be reached
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uSun;
+      uniform float uNight;
+      uniform float uTime;
+      varying vec3 vDir;
 
-export type CityScene = {
-  /** Drive the whole scene from scroll progress in [0, 1]. */
-  setProgress(p: number): void
-  /** Advance animation and draw. `dt` in seconds. */
-  render(dt: number): void
-  resize(width: number, height: number, dpr: number): void
-  dispose(): void
-  /** Resolves once the model is in the scene. */
-  ready: Promise<void>
-  /** Restoration amount currently shown, for the UI to mirror. */
-  readonly restore: number
+      float hash(vec3 p) {
+        p = fract(p * 0.3183099 + vec3(0.71, 0.113, 0.419));
+        p *= 17.0;
+        return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+      }
+
+      float noise(vec3 x) {
+        vec3 i = floor(x);
+        vec3 f = fract(x);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(mix(hash(i + vec3(0,0,0)), hash(i + vec3(1,0,0)), f.x),
+                       mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+                   mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+                       mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
+      }
+
+      float fbm(vec3 p) {
+        float a = 0.5, s = 0.0;
+        for (int i = 0; i < 5; i++) { s += noise(p) * a; p *= 2.03; a *= 0.5; }
+        return s;
+      }
+
+      void main() {
+        vec3 d = normalize(vDir);
+        float h = clamp((d.y + 0.16) / 0.72, 0.0, 1.0);
+
+        // the vertical gradient, dusk and night held side by side
+        vec3 dusk = mix(mix(vec3(0.72, 0.30, 0.08), vec3(0.44, 0.16, 0.09), smoothstep(0.0, 0.30, h)),
+                        vec3(0.09, 0.06, 0.11), smoothstep(0.22, 0.85, h));
+        // Darker than looks right in isolation. Against a city this lit, a
+        // night sky with any lift in it stops being night — the towers have to
+        // be the brightest thing in the frame.
+        // Lifted. The version before this was accurate night and completely
+        // unreadable — the city was a black shape on a black sky. A page has
+        // to be lookable-at before it is correct.
+        vec3 night = mix(mix(vec3(0.085, 0.150, 0.225), vec3(0.042, 0.078, 0.140), smoothstep(0.0, 0.32, h)),
+                         vec3(0.014, 0.024, 0.058), smoothstep(0.20, 0.90, h));
+        vec3 col = mix(dusk, night, uNight);
+
+        // the sun, and the moon that replaces it
+        float sd = max(dot(d, normalize(uSun)), 0.0);
+        float glow = pow(sd, 26.0);
+        float disc = smoothstep(0.9986, 0.9994, sd);
+        // Kept deliberately low. The first version put a 6x white disc on the
+        // horizon and, with bloom on top, the opening frame was physically
+        // uncomfortable to look at — which is not the same thing as being a
+        // bright sunset. The sun now reads by being *warmer* than the sky
+        // around it rather than by being brighter than the screen allows.
+        col += vec3(1.10, 0.46, 0.14) * glow * (1.0 - uNight) * 0.85;
+        col += vec3(1.30, 0.86, 0.52) * disc * (1.0 - uNight) * 1.4;
+        // the moon comes up on the other side of the sky
+        vec3 moon = normalize(vec3(0.52, 0.42, 0.74));
+        float md = max(dot(d, moon), 0.0);
+        col += vec3(0.55, 0.68, 0.95) * pow(md, 90.0) * uNight * 0.9;
+        col += vec3(1.0, 1.0, 1.0) * smoothstep(0.99955, 0.99985, md) * uNight * 3.2;
+
+        // stars, only once it is dark enough for them
+        float sparkle = hash(floor(d * 620.0));
+        float stars = smoothstep(0.9975, 0.9995, sparkle) * smoothstep(0.02, 0.40, d.y);
+        col += vec3(0.85, 0.90, 1.0) * stars * uNight *
+               (0.6 + 0.4 * sin(uTime * 1.7 + sparkle * 90.0));
+
+        // cloud bands: stretched flat along the horizon so they read as strata
+        float c = fbm(vec3(d.xz * 2.4, d.y * 9.0) + vec3(uTime * 0.004, 0.0, 0.0));
+        float band = smoothstep(0.46, 0.74, c) * (1.0 - smoothstep(0.16, 0.72, h));
+        vec3 cloudCol = mix(vec3(0.055, 0.036, 0.044), vec3(0.02, 0.035, 0.06), uNight);
+        col = mix(col, cloudCol, band * 0.78);
+
+        gl_FragColor = vec4(col, 1.0);
+        #include <colorspace_fragment>
+      }
+    `,
+  })
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 26), material)
+  mesh.frustumCulled = false
+  mesh.renderOrder = -1
+  return { mesh, uniforms, material }
 }
 
-// ---------------------------------------------------------------- restoration
-type RestoreUniforms = {
-  front: THREE.IUniform<number>
-  soft: THREE.IUniform<number>
-  amount: THREE.IUniform<number>
-}
-
-const RESTORE_VERTEX_HOOK = (shader: THREE.WebGLProgramParametersWithUniforms, shared: RestoreUniforms) => {
-  shader.uniforms.uFront = shared.front
-  shader.uniforms.uSoft = shared.soft
-  shader.uniforms.uAmount = shared.amount
-  shader.vertexShader = shader.vertexShader
-    .replace(
-      '#include <common>',
-      '#include <common>\nvarying float vRestoreY;\nvarying float vRestoreDist;\nvarying vec3 vRestoreWorld;',
-    )
-    .replace(
-      '#include <begin_vertex>',
-      '#include <begin_vertex>\nvRestoreY = (modelMatrix * vec4(transformed, 1.0)).y;',
-    )
-    .replace(
-      '#include <project_vertex>',
-      '#include <project_vertex>\nvRestoreDist = -mvPosition.z;\nvRestoreWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;',
-    )
+// --------------------------------------------------------- the restoration
+type Restore = {
+  uFront: { value: number }
+  uSeam: { value: number }
 }
 
 /**
- * The cladding is gated by a world-space front that rises out of the water, so
- * the city rebuilds itself floor by floor.
+ * Hide everything above a world-space height, and light the cut.
  *
- * This clips rather than fades. Stochastic (alpha-hash) transparency was the
- * obvious way to dissolve it in, but without temporal AA to resolve the hash
- * the whole city crawls with dither noise; and ordinary alpha blending on
- * geometry this interleaved sorts badly. A hard cut costs nothing, sorts
- * perfectly, and a glowing seam along the cut line sells the rebuild better
- * than a fade ever did.
+ * This is the whole transformation, and it is deliberately one line of shader:
+ * the restored layers of the model are present from the first frame and simply
+ * clipped away, so bringing the city back costs nothing but a uniform. The
+ * alternative — building geometry as the scroll advances — spends its budget
+ * on allocation at exactly the moment the reader is moving.
  */
-function applyRestoreClip(material: THREE.Material, shared: RestoreUniforms, seam: THREE.Color) {
+/**
+ * The opposite of the restoration: hide everything *below* the front.
+ *
+ * Without this the ruin simply stayed where it was and the finished city grew
+ * up around it — broken stumps standing next to lit towers, a wrecked shell
+ * beside the sphere. The two states have to trade places, not overlap, so the
+ * same rising line that reveals the city takes the ruin away underneath it.
+ */
+function applyDissolve(material: THREE.Material, shared: Restore) {
   material.onBeforeCompile = shader => {
-    RESTORE_VERTEX_HOOK(shader, shared)
-    shader.uniforms.uSeam = { value: seam }
+    shader.uniforms.uFront = shared.uFront
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying float vDisY;')
+      .replace(
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\nvDisY = (modelMatrix * vec4(transformed, 1.0)).y;',
+      )
     shader.fragmentShader = shader.fragmentShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-         varying float vRestoreY;
-         varying float vRestoreDist;
-         uniform float uFront;
-         uniform float uSoft;
-         uniform float uAmount;
-         uniform vec3 uSeam;`,
-      )
-      .replace(
-        '#include <map_fragment>',
-        `if (uAmount < 0.002 || vRestoreY > uFront) discard;
-         #include <map_fragment>`,
-      )
-      // a bright band trailing just under the front, as if the stone is still setting
+      .replace('#include <common>',
+        '#include <common>\nvarying float vDisY;\nuniform float uFront;')
       .replace(
         '#include <dithering_fragment>',
         `#include <dithering_fragment>
-         float seam = smoothstep(uFront - uSoft, uFront, vRestoreY);
-         gl_FragColor.rgb += uSeam * seam * seam * 1.4;`,
+         if (vDisY < uFront) discard;`,
       )
   }
   material.needsUpdate = true
 }
 
-/** Same front, but as a soft alpha ramp — right for the additive light strips. */
-function applyRestoreFade(material: THREE.Material, shared: RestoreUniforms) {
+function applyRestore(material: THREE.Material, shared: Restore, seam: THREE.Color,
+                      warmth = 0) {
   material.onBeforeCompile = shader => {
-    RESTORE_VERTEX_HOOK(shader, shared)
-    shader.uniforms.uNeonCool = { value: PALETTE.neon }
-    shader.uniforms.uNeonWarm = { value: PALETTE.neonWarm }
+    shader.uniforms.uFront = shared.uFront
+    shader.uniforms.uSeamW = shared.uSeam
+    shader.uniforms.uSeamC = { value: seam }
+    shader.uniforms.uWarm = { value: warmth }
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWorldP;')
+      .replace(
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\nvWorldP = (modelMatrix * vec4(transformed, 1.0)).xyz;',
+      )
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
         `#include <common>
-         varying float vRestoreY;
-         varying float vRestoreDist;
-         varying vec3 vRestoreWorld;
+         varying vec3 vWorldP;
          uniform float uFront;
-         uniform float uSoft;
-         uniform float uAmount;
-         uniform vec3 uNeonCool;
-         uniform vec3 uNeonWarm;`,
+         uniform float uSeamW;
+         uniform float uWarm;
+         uniform vec3 uSeamC;`,
       )
       .replace(
-        '#include <map_fragment>',
-        `#include <map_fragment>
-         // Zanarkand at night is not one colour: most windows burn warm amber
-         // and the structure is picked out in cold cyan. Hashing the building's
-         // footprint gives each tower its own bias, so the skyline mixes.
-         vec2 cell = floor(vRestoreWorld.xz / 17.0);
-         float h = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
-         float band = fract(vRestoreWorld.y * 0.09 + h * 3.7);
-         float warm = smoothstep(0.35, 0.65, h * 0.75 + band * 0.25);
-         diffuseColor.rgb *= mix(uNeonCool, uNeonWarm, warm);
+        '#include <dithering_fragment>',
+        `#include <dithering_fragment>
+         float vWorldY = vWorldP.y;
+         if (vWorldY > uFront) discard;
 
-         float restoreBand = smoothstep(uFront + uSoft * 0.5, uFront - uSoft, vRestoreY);
-         // A light strip a few metres from the lens covers a quarter of the
-         // screen and reads as a flat slab, not as light. Fading them out up
-         // close keeps the glow in the distance where it belongs.
-         float near = smoothstep(10.0, 52.0, vRestoreDist);
-         // and the far end: a light band a kilometre out lands under a pixel
-         // and scintillates as the camera swings. Ease them off instead.
-         float far = 1.0 - smoothstep(420.0, 1500.0, vRestoreDist) * 0.85;
-         diffuseColor.a *= restoreBand * near * far * uAmount;`,
+         // Lamplight, not signage.
+         //
+         // The older model has a single emissive material for every lit
+         // surface it owns, so lighting it from one colour gave a city that
+         // was uniformly blue and, at night, uniformly dark. This scatters
+         // amber through it by hashing world position: neighbouring windows
+         // land on different sides of the threshold, so a facade ends up with
+         // warm rooms among the cold ones, which is what a city looks like
+         // when people are still in it.
+         if (uWarm > 0.0) {
+           // Per window, not per district. The cell has to be small enough
+           // that neighbouring windows land in different cells — at the size
+           // the first attempt used, whole facades went amber together and it
+           // read as coloured lighting rather than as rooms.
+           vec3 cell = floor(vWorldP * 0.14);
+           float h = fract(sin(dot(cell, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+           float h2 = fract(h * 197.31);
+           float warm = step(1.0 - uWarm, h);
+           vec3 amber = vec3(1.30, 0.66, 0.24);
+           vec3 cold  = vec3(0.46, 0.86, 1.08);
+           // and not every window is on, or on as hard as its neighbour
+           gl_FragColor.rgb *= mix(cold, amber, warm) * (0.62 + 0.52 * h2);
+         }
+
+         // the seam: a band of light riding the front as it climbs, so the
+         // rebuild has an edge you can watch rather than appearing all at once
+         float seam = 1.0 - smoothstep(0.0, uSeamW, uFront - vWorldY);
+         gl_FragColor.rgb += uSeamC * seam * 1.6;`,
       )
   }
   material.needsUpdate = true
 }
 
-
 /**
- * A tiny procedural night sky, pre-filtered into an environment map.
+ * Make the sphere behave like water.
  *
- * Without one, a transmissive material has nothing to reflect and the pool
- * reads as flat tinted glass. This costs one 128x64 texture and a single PMREM
- * pass at startup, and it is what puts a moon glint and a horizon line on the
- * water's surface.
+ * A perfectly round, perfectly clear ball reads as glass, and the pitch inside
+ * it reads as an ornament in a paperweight. Two things fix that and they have
+ * to happen together: the silhouette has to move — big slow lobes rolling
+ * around it, chop riding on those — and the volume has to be murky enough that
+ * what is inside is *suggested* rather than displayed. Water a hundred feet
+ * deep does not show you the far wall.
  */
-function makeEnvironment(renderer: THREE.WebGLRenderer, moonDir: THREE.Vector3) {
-  const w = 128
-  const h = 64
-  const data = new Float32Array(w * h * 4)
-  const sky = new THREE.Color(0x121a2e)
-  const horizon = new THREE.Color(0x6a3520)
-  const ground = new THREE.Color(0x03060a)
-  const c = new THREE.Color()
-  const dir = new THREE.Vector3()
-
-  for (let y = 0; y < h; y++) {
-    const phi = (y + 0.5) / h * Math.PI
-    for (let x = 0; x < w; x++) {
-      const theta = (x + 0.5) / w * Math.PI * 2
-      dir.set(Math.sin(phi) * Math.cos(theta), Math.cos(phi), Math.sin(phi) * Math.sin(theta))
-      const up = dir.y
-      if (up >= 0) c.copy(horizon).lerp(sky, Math.pow(up, 0.6))
-      else c.copy(horizon).lerp(ground, Math.pow(-up, 0.4))
-      // the moon, and the broad glow around it
-      const d = dir.dot(moonDir)
-      c.addScalar(Math.pow(Math.max(0, d), 900) * 6)
-      c.r += Math.pow(Math.max(0, d), 12) * 0.28
-      c.g += Math.pow(Math.max(0, d), 12) * 0.15
-      c.b += Math.pow(Math.max(0, d), 12) * 0.07
-      const i = (y * w + x) * 4
-      data[i] = c.r
-      data[i + 1] = c.g
-      data[i + 2] = c.b
-      data[i + 3] = 1
-    }
-  }
-  const tex = new THREE.DataTexture(data, w, h, THREE.RGBAFormat, THREE.FloatType)
-  tex.mapping = THREE.EquirectangularReflectionMapping
-  tex.needsUpdate = true
-  const pmrem = new THREE.PMREMGenerator(renderer)
-  const rt = pmrem.fromEquirectangular(tex)
-  pmrem.dispose()
-  tex.dispose()
-  return rt
-}
-
-
-// ------------------------------------------------------------------ materials
-function buildMaterials(shared: RestoreUniforms, _tier: Tier) {
-  // Kept deliberately dark: at night the shapes should be carried by the moon
-  // rim and by their own lights, not by a bright albedo.
-  const stone = new THREE.MeshStandardMaterial({ color: 0x6e6c66, roughness: 0.96, metalness: 0.0, flatShading: true })
-  const dark = new THREE.MeshStandardMaterial({ color: 0x2b2b28, roughness: 0.98, metalness: 0.0, flatShading: true })
-  const metal = new THREE.MeshStandardMaterial({ color: 0x3a4049, roughness: 0.4, metalness: 0.92, flatShading: true })
-
-  // faint traces of light that outlived the city
-  const glow = new THREE.MeshBasicMaterial({ color: 0x59d6d0, toneMapped: false })
-
-  // the cladding that only the restored city has
-  const clad = new THREE.MeshStandardMaterial({ color: 0x7a7871, roughness: 0.8, metalness: 0.04, flatShading: true })
-  applyRestoreClip(clad, shared, new THREE.Color(0x2ba7c4))
-
-  const neon = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    toneMapped: false,
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  })
-  applyRestoreFade(neon, shared)
-
-  // The sphere is water, but it is also the only light source the ruin has —
-  // in the reference it glows white-blue from inside the bowl. So: a real
-  // refractive surface (transmission + ior), tinted pale blue by absorption
-  // rather than by base colour, with a standing emission underneath it so it
-  // reads as lit from within rather than merely reflective.
-  const water = new THREE.MeshPhysicalMaterial({
-    color: 0xeaf8ff,
-    roughness: 0.02,
-    metalness: 0.0,
-    transmission: 1.0,
-    thickness: 14,
-    attenuationColor: new THREE.Color(0x6cc4ea),
-    attenuationDistance: 60,
-    ior: 1.333,
-    emissive: new THREE.Color(0x4aa8e8),
-    emissiveIntensity: 0.30,
-    specularIntensity: 1.0,
-    clearcoat: 0.35,
-    clearcoatRoughness: 0.05,
-    envMapIntensity: 1.2,
-    side: THREE.DoubleSide,
-  })
-
-  // Spray, mist and the cascades' foam. Ordinary water — it must not carry the
-  // pool's emission, or every droplet reads as a lamp.
-  const spray = new THREE.MeshPhysicalMaterial({
-    color: 0xcfeef8,
-    roughness: 0.16,
-    metalness: 0.0,
-    transmission: 0.85,
-    thickness: 3,
-    ior: 1.333,
-    transparent: true,
-    opacity: 0.9,
-    side: THREE.DoubleSide,
-  })
-
-  // silhouettes on the far bank: unlit, sitting just above the fog
-  const far = new THREE.MeshBasicMaterial({ color: 0x0d1620, fog: true })
-
-  return { stone, dark, metal, glow, clad, neon, water, spray, far }
-}
-
-/**
- * Surface motion for the pool.
- *
- * The sphere should not read as a ball of glass. It is a volume of water being
- * held in a shape it does not want to hold, so the silhouette itself has to
- * move: big slow lobes rolling around it, smaller swells riding on those, and a
- * fine chop on top. The displacement is deliberately large enough to break the
- * outline — a perfectly round edge is what made earlier versions look solid.
- *
- * Normals are perturbed with the same field so the refraction agrees with the
- * shape, and the whole pattern rotates slowly, as if the water were turning
- * inside its cage.
- */
-function animateWater(material: THREE.MeshPhysicalMaterial, time: THREE.IUniform<number>, centre: THREE.Vector3, radius: number, front: THREE.IUniform<number>, foam: THREE.IUniform<number>) {
+function applyWaves(material: THREE.MeshPhysicalMaterial, time: { value: number },
+                    centre: THREE.Vector3, radius: number) {
+  const prev = material.onBeforeCompile
   material.onBeforeCompile = shader => {
+    prev?.call(material, shader, undefined as never)
     shader.uniforms.uTime = time
-    shader.uniforms.uFill = front
-    shader.uniforms.uFoam = foam
-    shader.uniforms.uPoolC = { value: centre }
-    shader.uniforms.uPoolR = { value: radius }
+    shader.uniforms.uCentre = { value: centre }
+    shader.uniforms.uRadius = { value: radius }
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
         `#include <common>
          uniform float uTime;
-         uniform vec3 uPoolC;
-         uniform float uPoolR;
-
-         // the wave field, in the sphere's own frame
-         float poolWave(vec3 d, float t) {
-           return  0.62 * sin(d.y * 2.1 + t * 0.75)
-                 + 0.52 * sin(d.x * 1.7 - t * 0.61 + d.z * 1.3)
-                 + 0.34 * sin(d.z * 3.1 + t * 1.03)
-                 + 0.22 * sin((d.x + d.y) * 4.6 - t * 1.47)
-                 + 0.12 * sin((d.z - d.y) * 7.8 + t * 2.05);
+         uniform vec3 uCentre;
+         uniform float uRadius;
+         // three bands of swell, at different rates and axes, so the outline
+         // never repeats within the time anyone watches it
+         float swell(vec3 d, float t) {
+           return sin(d.y * 3.1 + t * 0.9) * 0.42
+                + sin(d.x * 4.7 - t * 1.15) * 0.28
+                + sin((d.x + d.z) * 7.3 + t * 1.7) * 0.16
+                + sin((d.y - d.z) * 12.1 - t * 2.4) * 0.08;
          }`,
-      )
-      .replace(
-        '#include <beginnormal_vertex>',
-        `#include <beginnormal_vertex>
-         vec3 poolDir = normalize(position - uPoolC);
-         // slow rotation, so the water turns inside its cage
-         float poolSpin = uTime * 0.11;
-         float pcs = cos(poolSpin), psn = sin(poolSpin);
-         poolDir = vec3(poolDir.x * pcs - poolDir.z * psn, poolDir.y, poolDir.x * psn + poolDir.z * pcs);
-         float poolH = poolWave(poolDir, uTime);
-         // finite-difference the field for a normal that matches the surface
-         float poolE = 0.06;
-         vec3 poolT1 = normalize(cross(poolDir, vec3(0.0, 1.0, 0.0) + vec3(0.001)));
-         vec3 poolT2 = normalize(cross(poolDir, poolT1));
-         float poolD1 = poolWave(normalize(poolDir + poolT1 * poolE), uTime) - poolH;
-         float poolD2 = poolWave(normalize(poolDir + poolT2 * poolE), uTime) - poolH;
-         objectNormal = normalize(objectNormal - (poolT1 * poolD1 + poolT2 * poolD2) * 0.9 / poolE * 0.06);`,
       )
       .replace(
         '#include <begin_vertex>',
         `#include <begin_vertex>
-         vPoolH = poolH;
-         transformed += normalize(position - uPoolC) * poolH * uPoolR * 0.010;`,
+         vec3 wp = (modelMatrix * vec4(transformed, 1.0)).xyz;
+         vec3 dir = normalize(wp - uCentre);
+         float amp = uRadius * 0.055 * swell(dir, uTime);
+         transformed += normalize(objectNormal) * amp;`,
       )
-    shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying float vPoolH;\nvarying float vPoolY;')
-      .replace('#include <project_vertex>',
-        '#include <project_vertex>\nvPoolY = (modelMatrix * vec4(transformed, 1.0)).y;')
-
-    // Where the water heaps up it breaks white. Foam is the single strongest
-    // cue that this is water and not glass, and it is what the reference is
-    // full of — the crests go opaque and bright while the troughs stay clear.
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>',
-        '#include <common>\nvarying float vPoolH;\nvarying float vPoolY;\nuniform float uFill;\nuniform float uFoam;')
+      // the uniform has to be declared on this side too — it was only in the
+      // vertex stage, and the program failed to link with no useful message
+      .replace('#include <common>', '#include <common>\nuniform float uTime;')
       .replace(
-        '#include <map_fragment>',
-        `// the water level: nothing above the fill line exists yet
-         if (vPoolY > uFill) discard;
-         #include <map_fragment>
-         // and the surface itself runs bright, like a meniscus
-         float fillEdge = smoothstep(uFill - 2.2, uFill, vPoolY);
-         float foam = max(smoothstep(0.72, 1.55, vPoolH), fillEdge * 0.9) * uFoam;
-         float lace = smoothstep(0.15, 0.95, vPoolH) * 0.35;
-         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), foam * 0.75 + lace * 0.2);`,
-      )
-      .replace(
-        '#include <roughnessmap_fragment>',
-        `#include <roughnessmap_fragment>
-         roughnessFactor = mix(roughnessFactor, 0.75, foam);`,
-      )
-      .replace(
-        '#include <emissivemap_fragment>',
-        `#include <emissivemap_fragment>
-         totalEmissiveRadiance += vec3(0.85, 0.95, 1.0) * foam * 0.55;`,
-      )
+      '#include <normal_fragment_maps>',
+      `#include <normal_fragment_maps>
+       // ripple the shading normal with a finer version of the same field, so
+       // the highlights break up rather than sliding around as one sheet
+       normal = normalize(normal + 0.16 * vec3(
+         sin(vViewPosition.y * 0.9 + uTime * 2.1),
+         sin(vViewPosition.x * 1.1 - uTime * 1.7),
+         sin(vViewPosition.z * 1.3 + uTime * 2.6)));`,
+    )
   }
   material.needsUpdate = true
 }
 
-// ------------------------------------------------------------------- the sea
-/**
- * The flooded plain. A full planar reflection would cost more than the rest of
- * the scene put together, so this fakes what actually matters at night: the
- * fresnel roll-off toward the horizon, wind ripples, a moon glitter path, and
- * smeared vertical reflections under the two brightest landmarks.
- */
-function createSea(fogColor: THREE.Color, time: THREE.IUniform<number>) {
-  const uniforms = THREE.UniformsUtils.merge([
-    THREE.UniformsLib.fog,
-    {
-      uTime: time,
-      uDeep: { value: new THREE.Color(0x03080d) },
-      uShallow: { value: PALETTE.water.clone() },
-      uHorizon: { value: fogColor },
-      uMoonDir: { value: new THREE.Vector3(0.70, 0.17, -0.63).normalize() },
-      uRestore: { value: 0 },
-      uDawn: { value: 0 },
-      uDusk: { value: 1 },
-      // (x, z, intensity, spread) for the pool and the spire
-      uLightA: { value: new THREE.Vector4(POOL.x, POOL.z, 1.0, 26) },
-      uLightB: { value: new THREE.Vector4(STADIUM.x, STADIUM.z, 0.9, STADIUM.radius * 0.9) },
-      uLightColor: { value: PALETTE.neon.clone() },
-    },
-  ])
-  uniforms.uTime = time
-
-  const material = new THREE.ShaderMaterial({
-    uniforms,
-    fog: true,
-    transparent: false,
-    vertexShader: /* glsl */ `
-      #include <fog_pars_vertex>
-      varying vec3 vWorld;
-      void main() {
-        vec4 world = modelMatrix * vec4(position, 1.0);
-        vWorld = world.xyz;
-        vec4 mvPosition = viewMatrix * world;
-        gl_Position = projectionMatrix * mvPosition;
-        #ifdef USE_FOG
-          vFogDepth = -mvPosition.z;
-        #endif
-      }
-    `,
-    fragmentShader: /* glsl */ `
-      #include <fog_pars_fragment>
-      varying vec3 vWorld;
-      uniform float uTime;
-      uniform vec3 uDeep;
-      uniform vec3 uShallow;
-      uniform vec3 uHorizon;
-      uniform vec3 uMoonDir;
-      uniform vec3 uLightColor;
-      uniform vec4 uLightA;
-      uniform vec4 uLightB;
-      uniform float uRestore;
-      uniform float uDawn;
-      uniform float uDusk;
-
-      // Four wind waves, differentiated analytically. Amplitude is damped with
-      // distance: past a few hundred units a ripple is far smaller than a pixel,
-      // and sampling it anyway is what produces the moire that plagues naive
-      // water shaders.
-      vec3 rippleNormal(vec2 p, float damp) {
-        vec4 freq = vec4(0.070, 0.052, 0.026, 0.013);
-        vec4 speed = vec4(0.95, -0.72, 0.44, -0.21);
-        vec4 amp = vec4(0.06, 0.09, 0.15, 0.24) * damp;
-        vec4 phase = vec4(
-          p.x * freq.x + uTime * speed.x,
-          p.y * freq.y + uTime * speed.y,
-          (p.x * 0.72 + p.y * 0.69) * freq.z + uTime * speed.z,
-          (p.x * -0.6 + p.y * 0.8) * freq.w + uTime * speed.w
-        );
-        vec4 c = cos(phase) * amp * freq;
-        float dhdx = c.x + c.z * 0.72 - c.w * 0.6;
-        float dhdz = c.y + c.z * 0.69 + c.w * 0.8;
-        return normalize(vec3(-dhdx, 0.06, -dhdz));
-      }
-
-      // a landmark's reflection, smeared along the axis between it and the eye
-      float smear(vec2 p, vec4 light, vec3 eye) {
-        float across = exp(-abs(p.y - light.y) / light.w);
-        float behind = smoothstep(light.x + 40.0, light.x - 10.0, p.x);
-        float toward = smoothstep(eye.x - 320.0, eye.x + 10.0, p.x);
-        float shimmer = 0.65 + 0.35 * sin(p.x * 0.35 + uTime * 2.1) * sin(p.y * 0.5 - uTime * 1.3);
-        return across * behind * toward * shimmer * light.z;
-      }
-
-      void main() {
-        vec3 eye = cameraPosition;
-        vec3 toEye = eye - vWorld;
-        float dist = length(toEye);
-        vec3 view = toEye / dist;
-        float damp = exp(-dist / 110.0);
-        vec3 n = rippleNormal(vWorld.xz, damp);
-
-        float fres = pow(1.0 - clamp(dot(view, n), 0.0, 1.0), 4.0);
-        vec3 base = mix(uDeep, uShallow * 0.5, 0.35 + 0.25 * uRestore);
-        vec3 col = mix(base, uHorizon, clamp(fres, 0.0, 1.0) * 0.85);
-
-        // moon glitter — the highlight widens with distance to stay above one
-        // pixel, which keeps it from sparkling into aliasing on the horizon
-        vec3 h = normalize(uMoonDir + view);
-        float gloss = mix(16.0, 48.0, damp);
-        float spec = pow(max(dot(n, h), 0.0), gloss);
-        col += vec3(0.62, 0.72, 0.85) * spec * mix(0.05, 0.85, damp);
-
-        // reflections of the landmarks, brightening as the city comes back
-        float ref = smear(vWorld.xz, uLightA, eye) + smear(vWorld.xz, uLightB, eye);
-        col += uLightColor * ref * (0.10 + 0.55 * uRestore);
-
-        // "First in the sea, then it spreads to the sky, then to the whole
-        // city." Dawn reaches the water before anything else — and at the other
-        // end of the arc, so does the sunset the ruin opens on.
-        float toHorizon = smoothstep(120.0, 900.0, dist);
-        col += vec3(1.00, 0.52, 0.26) * uDawn * (0.20 + 0.85 * toHorizon);
-        col += vec3(1.00, 0.46, 0.20) * uDusk * (0.02 + 0.34 * toHorizon * toHorizon);
-
-        gl_FragColor = vec4(col, 1.0);
-        #include <fog_fragment>
-      }
-    `,
-  })
-
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(6000, 4000, 1, 1), material)
-  mesh.rotation.x = -Math.PI / 2
-  mesh.position.set(200, 0, 0)
-  mesh.renderOrder = -1
-  return { mesh, uniforms }
-}
-
-// ------------------------------------------------------------------ pyreflies
-/**
- * 幻光虫 — pyreflies.
- *
- * A designed silhouette that nonetheless traces a real path. Two earlier
- * attempts each got half of it: a ribbon built from the head's past positions
- * followed the motion honestly but deformed into something different every
- * frame, while a sprite with a painted-on tail held its shape but the tail was
- * a lie that never matched where the light had been.
- *
- * This does both. The vertex shader evaluates the motion at eight earlier
- * moments, projects each, and hands the fragment shader those offsets *in
- * sprite space*. The fragment then lays a bead of light at each one. The head
- * is drawn, so it is stable and round; the trail is measured, so it is the
- * actual wake.
- *
- * They are also the visible agent of the restoration: `uSurge` peaks in the
- * middle of the scroll, which is exactly when the stadium is rebuilding.
- */
-function createMotes(count: number, time: THREE.IUniform<number>, viewport: THREE.Vector2) {
-  const positions = new Float32Array(count * 3)
-  const seeds = new Float32Array(count * 3)
-  for (let i = 0; i < count; i++) {
-    positions[i * 3] = -380 + Math.random() * 960
-    positions[i * 3 + 1] = Math.random() * 180
-    positions[i * 3 + 2] = (Math.random() - 0.5) * 460
-    seeds[i * 3] = Math.random()
-    seeds[i * 3 + 1] = Math.random()
-    seeds[i * 3 + 2] = Math.random()
-  }
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-  geometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 3))
-  geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(100, 90, 0), 1400)
-
-  const MOTION = /* glsl */ `
-    vec3 motePos(vec3 base, vec3 seed, float t, float surge, vec3 flow) {
-      float speed = 1.4 + seed.x * 2.6 + surge * 7.0;
-      float span = 190.0;
-      vec3 p = base;
-      // pyreflies rise; the wander only needs to be enough to curve the wake
-      float climb = mod(base.y + t * speed + seed.y * span, span);
-      p.y = climb;
-      // ...but not straight up. the flow vector turns with the scroll, so the swarm
-      // leans a different way in every chapter — streaming out over the water
-      // in one, curling back over the bowl in the next — while each mote still
-      // carries its own drift along the way it has actually gone.
-      p.x += flow.x * climb * (0.7 + seed.z * 0.6);
-      p.z += flow.z * climb * (0.7 + seed.x * 0.6);
-      p.y += flow.y * climb * (0.5 + seed.y * 0.5);
-      float ph = t * (0.42 + seed.z * 0.55) + seed.y * 12.56;
-      float swirl = 1.6 + 3.4 * surge * (0.4 + seed.z);
-      p.x += sin(ph) * swirl + sin(ph * 2.1 + seed.x * 4.0) * swirl * 0.4;
-      p.z += cos(ph * 1.21) * swirl + cos(ph * 1.8 + seed.y * 3.0) * swirl * 0.35;
-      // The wriggle — a function of time alone, never of position.
-      //
-      // An earlier version made the phase depend on how far the mote had
-      // climbed, which put a standing wave in space: the tail was bent into an
-      // S even when the head had swum dead straight. The tail is drawn by
-      // evaluating this function at earlier times, so it can only ever be the
-      // path the head actually took — which is the point. Make the head swim,
-      // and the body follows.
-      // Slow and shallow. The mote's job is to rise; the wriggle is a hint of
-      // life on top of that, not the motion itself. Fast and wide read as a
-      // creature thrashing, and — because the body is drawn as a polyline
-      // through eight past positions — put visible corners in it.
-      float wig = t * (2.1 + seed.z * 0.9) + seed.y * 25.0;
-      float amp = 0.5 + 0.45 * seed.z;
-      p.x += sin(wig) * amp;
-      p.z += cos(wig * 0.91 + seed.x * 3.0) * amp;
-      p.y += sin(wig * 0.57 + seed.z * 5.0) * amp * 0.35;
-      return p;
-    }
-  `
-
-  const material = new THREE.ShaderMaterial({
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
+// ------------------------------------------------------------------ the water
+function createWaterMaterial(time: { value: number }, night: { value: number },
+                             sunDir: THREE.Vector3) {
+  return new THREE.ShaderMaterial({
     uniforms: {
       uTime: time,
-      uSurge: { value: 0 },
-      uRestore: { value: 0 },
-      uScale: { value: 1 },
-      uFlow: { value: new THREE.Vector3() },
-      uViewport: { value: viewport },
-    },
-    vertexShader: /* glsl */ `
-      attribute vec3 aSeed;
-      uniform float uTime;
-      uniform float uSurge;
-      uniform float uScale;
-      uniform vec3 uFlow;
-      uniform vec2 uViewport;
-      varying float vFade;
-      varying float vNear;
-      varying vec3 vSeed;
-      // eight past positions, packed as four pairs, in sprite-local units
-      varying vec4 vT0;
-      varying vec4 vT1;
-      varying vec4 vT2;
-      varying vec4 vT3;
-      ${MOTION}
-      void main() {
-        vec3 p = motePos(position, aSeed, uTime, uSurge, uFlow);
-        vec4 mv = modelViewMatrix * vec4(p, 1.0);
-        vec4 clip = projectionMatrix * mv;
-        gl_Position = clip;
-
-        float size = (105.0 + 165.0 * aSeed.x) * (1.0 + 1.1 * uSurge);
-        gl_PointSize = size * uScale * 40.0 / max(-mv.z, 1.0);
-
-        vec2 headNdc = clip.xy / max(clip.w, 0.001);
-
-        // Where was it? Project each past position and express the offset as a
-        // fraction of this sprite, so the fragment can draw the wake directly.
-        vec2 offs[8];
-        for (int i = 0; i < 8; i++) {
-          float back = (float(i) + 1.0) * 0.22;
-          vec4 c = projectionMatrix * modelViewMatrix
-                 * vec4(motePos(position, aSeed, uTime - back, uSurge, uFlow), 1.0);
-          vec2 ndc = c.xy / max(c.w, 0.001);
-          vec2 pixels = (ndc - headNdc) * uViewport * 0.5;
-          vec2 local = pixels / max(gl_PointSize, 1.0);
-          // keep the wake inside the sprite rather than letting it clip
-          float m = length(local);
-          if (m > 0.46) local *= 0.46 / m;
-          offs[i] = local;
-        }
-        vT0 = vec4(offs[0], offs[1]);
-        vT1 = vec4(offs[2], offs[3]);
-        vT2 = vec4(offs[4], offs[5]);
-        vT3 = vec4(offs[6], offs[7]);
-
-        // Motes a few metres from the lens sweep across the frame every frame
-        // and read as strobing. The swarm belongs in the middle distance.
-        vNear = smoothstep(14.0, 70.0, -mv.z);
-
-        float breath = 0.82 + 0.18 * sin(uTime * (0.7 + aSeed.z * 0.9) + aSeed.x * 30.0);
-        float span = 190.0;
-        float band = smoothstep(0.0, 24.0, p.y) * smoothstep(span, span - 70.0, p.y);
-        vFade = band * breath * (0.45 + 0.55 * aSeed.y) * (0.6 + 0.9 * uSurge);
-        vSeed = aSeed;
-      }
-    `,
-    fragmentShader: /* glsl */ `
-      uniform float uTime;
-      uniform float uRestore;
-      varying float vFade;
-      varying float vNear;
-      varying vec3 vSeed;
-      varying vec4 vT0;
-      varying vec4 vT1;
-      varying vec4 vT2;
-      varying vec4 vT3;
-
-      void main() {
-        vec2 q = gl_PointCoord - 0.5;
-        q.y = -q.y;
-
-        // the head: a round bead of light
-        // the head is a bead drawn out along the direction it is travelling, so the
-        // creature reads as one long body rather than a dot with a tail
-        vec2 dir = normalize(vT0.xy + vec2(1e-5));
-        vec2 hq = vec2(dot(q, dir), dot(q, vec2(-dir.y, dir.x)));
-        float head = exp(-(hq.x * hq.x * 200.0 + hq.y * hq.y * 900.0));
-        float glow = exp(-dot(q, q) * 30.0) * 0.16
-                   + exp(-dot(q, q) * 9.0) * 0.07;
-
-        // The wake, laid along the path actually travelled — as one continuous
-        // smear, not a row of beads. Summing a blob per past position gave the
-        // creature a second head halfway down its tail; taking the distance to
-        // the *polyline* instead stretches a single ribbon of light behind it.
-        vec2 tp[8];
-        tp[0] = vT0.xy; tp[1] = vT0.zw;
-        tp[2] = vT1.xy; tp[3] = vT1.zw;
-        tp[4] = vT2.xy; tp[5] = vT2.zw;
-        tp[6] = vT3.xy; tp[7] = vT3.zw;
-
-        float nearest = 1e9;
-        float ageAt = 0.0;
-        vec2 prev = vec2(0.0);
-        for (int i = 0; i < 8; i++) {
-          vec2 cur = tp[i];
-          vec2 seg = cur - prev;
-          float len2 = max(dot(seg, seg), 1e-7);
-          float u = clamp(dot(q - prev, seg) / len2, 0.0, 1.0);
-          vec2 closest = prev + seg * u;
-          float d2 = dot(q - closest, q - closest);
-          if (d2 < nearest) {
-            nearest = d2;
-            ageAt = (float(i) + u) / 8.0;
-          }
-          prev = cur;
-        }
-
-        // thickens and softens as it falls behind, and dies away
-        float thick = mix(5200.0, 1900.0, ageAt);
-        float tail = exp(-nearest * thick) * pow(1.0 - ageAt, 0.75) * 0.9;
-
-        float alpha = (head + tail + glow) * vFade * vNear;
-        if (alpha < 0.003) discard;
-
-        // the tail runs through the spectrum; the head stays white
-        float hue = fract(vSeed.y + uTime * 0.06 + ageAt * 1.35);
-        vec3 iris = 0.42 + 0.58 * cos(6.28318 * (hue + vec3(0.00, 0.33, 0.67)));
-        // lift the whole spectrum toward white so it glows rather than tints
-        iris = mix(iris, vec3(1.0), 0.22);
-        vec3 col = mix(iris, vec3(1.0), clamp(head * 1.6 + 0.10, 0.0, 1.0));
-        gl_FragColor = vec4(col, alpha);
-      }
-    `,
-  })
-  return new THREE.Points(geometry, material)
-}
-
-// ---------------------------------------------------------------------- scene
-export function createCityScene(
-  canvas: HTMLCanvasElement,
-  { tier = 'high', onProgress }: { tier?: Tier; onProgress?: (v: number) => void } = {},
-): CityScene {
-  const renderer = new THREE.WebGLRenderer({
-    canvas,
-    antialias: true,
-    alpha: false,
-    powerPreference: 'high-performance',
-  })
-  renderer.setClearColor(PALETTE.fogRuin, 1)
-  renderer.toneMapping = THREE.ACESFilmicToneMapping
-  renderer.toneMappingExposure = 1.15
-  // The transmission pass re-renders the scene behind refractive surfaces.
-  // Scaling it down keeps real refraction affordable on phones instead of
-  // falling back to a flat translucent blue that reads as plastic.
-  if ('transmissionResolutionScale' in renderer) {
-    ;(renderer as THREE.WebGLRenderer & { transmissionResolutionScale: number })
-      .transmissionResolutionScale = tier === 'high' ? 0.6 : 0.3
-  }
-  renderer.outputColorSpace = THREE.SRGBColorSpace
-
-  const scene = new THREE.Scene()
-  const fogColor = PALETTE.fogRuin.clone()
-  scene.fog = new THREE.FogExp2(fogColor, 0.0013)
-  scene.background = fogColor
-
-  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.5, 6000)
-  camera.position.set(...WAYPOINTS[0].pos)
-
-  const time: THREE.IUniform<number> = { value: 0 }
-  // The pool gets its own rising front, separate from the city's: the water
-  // should not simply be there at the start, it should fill the sphere as the
-  // page scrolls, the same way everything else comes back.
-  const poolFront: THREE.IUniform<number> = { value: POOL.y - POOL_RADIUS - 2 }
-  const poolFoam: THREE.IUniform<number> = { value: 1 }
-  const shared = {
-    front: { value: RESTORE_FRONT[0] } as THREE.IUniform<number>,
-    soft: { value: 34 } as THREE.IUniform<number>,
-    amount: { value: 0 } as THREE.IUniform<number>,
-  }
-
-  // ---- lighting --------------------------------------------------------
-  // A single hard moon does the modelling; the hemisphere only keeps the shadow
-  // side from going to pure black. It sits ahead of the travel direction and
-  // high, so the city is rim-lit and back-lit as the camera flies into it — and
-  // so the disc itself is on screen, with its glitter path down the water.
-  const MOON_DIR = new THREE.Vector3(0.70, 0.17, -0.63).normalize()
-  const moon = new THREE.DirectionalLight(PALETTE.moonRuin, 3.4)
-  moon.position.copy(MOON_DIR).multiplyScalar(900)
-  scene.add(moon)
-
-  // the disc, well outside the fog's reach so it stays crisp
-  const moonDisc = new THREE.Mesh(
-    new THREE.CircleGeometry(150, 56),
-    new THREE.MeshBasicMaterial({
-      color: PALETTE.moon,
-      toneMapped: false,
-      fog: false,
-      transparent: true,
-      depthWrite: false,
-    }),
-  )
-  const moonHalo = new THREE.Mesh(
-    new THREE.CircleGeometry(230, 48),
-    new THREE.MeshBasicMaterial({
-      color: PALETTE.moon,
-      toneMapped: false,
-      fog: false,
-      transparent: true,
-      opacity: 0.10,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    }),
-  )
-  scene.environment = makeEnvironment(renderer, MOON_DIR).texture
-
-  const moonGroup = new THREE.Group()
-  moonGroup.add(moonDisc, moonHalo)
-  moonGroup.position.copy(MOON_DIR).multiplyScalar(2600)
-  moonGroup.renderOrder = -2
-  scene.add(moonGroup)
-
-  const hemi = new THREE.HemisphereLight(PALETTE.skyRuin, PALETTE.ground, 0.6)
-  scene.add(hemi)
-
-  const cityFill = new THREE.PointLight(PALETTE.neon, 0, 260, 2)
-  cityFill.position.set(POOL.x, POOL.y, POOL.z)
-  scene.add(cityFill)
-
-  const rimFill = new THREE.PointLight(PALETTE.neon, 0, 300, 2)
-  rimFill.position.set(STADIUM.x, STADIUM.rimHeight, STADIUM.z)
-  scene.add(rimFill)
-
-  scene.add(new THREE.AmbientLight(0x163a4a, 0.34))
-
-  // A cool violet fill from the opposite side. Without it the shadow side of
-  // the bowl goes colourless and the whole frame reads as grey-on-grey.
-  const counter = new THREE.DirectionalLight(0x7a6ad8, 0.9)
-  counter.position.set(-620, 180, 520)
-  scene.add(counter)
-
-  // The last chapter breaks into dawn, the way Tidus describes it.
-  const sunrise = new THREE.DirectionalLight(PALETTE.dawnLight, 0)
-  sunrise.position.set(1400, 90, -260)
-  scene.add(sunrise)
-
-  // ---- sea and motes ---------------------------------------------------
-  const sea = createSea(fogColor, time)
-  scene.add(sea.mesh)
-  const moteViewport = new THREE.Vector2(1, 1)
-  const motes = createMotes(tier === 'high' ? 340 : 150, time, moteViewport)
-  scene.add(motes)
-
-  // ---- camera rig ------------------------------------------------------
-  const posCurve = new THREE.CatmullRomCurve3(
-    WAYPOINTS.map(w => new THREE.Vector3(...w.pos)),
-    false,
-    'catmullrom',
-    0.5,
-  )
-  const targetCurve = new THREE.CatmullRomCurve3(
-    WAYPOINTS.map(w => new THREE.Vector3(...w.target)),
-    false,
-    'catmullrom',
-    0.5,
-  )
-  const fixedPos = new THREE.Vector3()
-  const fixedTarget = new THREE.Vector3()
-  const poolCentre = new THREE.Vector3(POOL.x, POOL.y, POOL.z)
-  const camPos = new THREE.Vector3()
-  const camTarget = new THREE.Vector3()
-  const camForward = new THREE.Vector3()
-  const camRight = new THREE.Vector3()
-
-  // ---- model -----------------------------------------------------------
-  const materials = buildMaterials(shared, tier)
-  animateWater(materials.water, time, new THREE.Vector3(POOL.x, POOL.y, POOL.z), POOL_RADIUS, poolFront, poolFoam)
-
-  const BY_NAME: Record<string, THREE.Material> = {
-    Stone: materials.stone,
-    StoneDark: materials.dark,
-    Metal: materials.metal,
-    Glow: materials.glow,
-    Clad: materials.clad,
-    Neon: materials.neon,
-    Pool: materials.water,
-    Water: materials.spray,
-    Falls: materials.spray,
-    Far: materials.far,
-  }
-
-  const disposables: Array<{ dispose(): void }> = []
-  let cityRoot: THREE.Object3D | null = null
-
-  // Plain glTF, no mesh compression. Draco would cut the file to a third, but
-  // its decoder is Emscripten output that calls `new Function`, so any page
-  // served under a `script-src` policy without 'unsafe-eval' fails to decode
-  // and the scene never appears. Dropping the normals instead got the model to
-  // a comparable size with nothing to decode at all.
-  const loader = new GLTFLoader()
-
-  const ready = new Promise<void>((resolve, reject) => {
-    loader.load(
-      MODEL_URL,
-      gltf => {
-        cityRoot = gltf.scene
-        cityRoot.traverse(obj => {
-          const mesh = obj as THREE.Mesh
-          if (!mesh.isMesh) return
-          const original = mesh.material as THREE.Material
-          const replacement = BY_NAME[original?.name ?? '']
-          if (replacement) mesh.material = replacement
-          if (original && !Object.values(BY_NAME).includes(original)) original.dispose()
-          mesh.frustumCulled = true
-          // the smooth surfaces need real normals back — the model ships without
-          if (replacement === materials.water || replacement === materials.spray) {
-            mesh.geometry.computeVertexNormals()
-            mesh.renderOrder = 3
-          }
-          // neon has to draw after the opaque city or additive blending eats it
-          if (replacement === materials.neon) mesh.renderOrder = 2
-          disposables.push(mesh.geometry)
-        })
-        scene.add(cityRoot)
-        resolve()
-      },
-      // Content-Length is not always there (gzip, some CDNs). When it is not,
-      // total is 0 and this reports nothing rather than dividing by zero — the
-      // loading screen falls back to its own indeterminate crawl.
-      evt => {
-        if (onProgress && evt.total > 0) onProgress(Math.min(1, evt.loaded / evt.total))
-      },
-      err => reject(err),
-    )
-  })
-
-  // The sphere's interior.
-  //
-  // Displacing the outer surface hard made it look like slime — a wobbling
-  // blob. What actually reads as "a volume of water being held" is motion
-  // *inside* it, so the outer skin now barely moves and this shell raymarches
-  // a few steps through the sphere instead, accumulating a swirling field.
-  // Eight samples is enough at the size this ever appears on screen.
-  const coreMaterial = new THREE.ShaderMaterial({
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    uniforms: {
-      uTime: time,
-      uColor: { value: new THREE.Color(0x8ad4ff) },
-      uDeep: { value: new THREE.Color(0x1d6fae) },
-      uGain: { value: 1 },
-      uCentre: { value: new THREE.Vector3(POOL.x, POOL.y, POOL.z) },
-      uRadius: { value: POOL_RADIUS * 0.97 },
-      uFill: { value: POOL.y - POOL_RADIUS - 2 },
+      uNight: night,
+      uSun: { value: sunDir.clone() },
+      uFog: { value: new THREE.Color(0x2a1408) },
+      uFogDensity: { value: 0.00042 },
     },
     vertexShader: /* glsl */ `
       varying vec3 vWorld;
@@ -971,325 +385,1054 @@ export function createCityScene(
     `,
     fragmentShader: /* glsl */ `
       uniform float uTime;
-      uniform vec3 uColor;
-      uniform vec3 uDeep;
-      uniform float uGain;
-      uniform vec3 uCentre;
-      uniform float uRadius;
-      uniform float uFill;
+      uniform float uNight;
+      uniform vec3 uSun;
+      uniform vec3 uFog;
+      uniform float uFogDensity;
       varying vec3 vWorld;
 
-      // cheap trig noise — no texture, and smooth enough to look like flow
-      float wisp(vec3 p) {
-        return sin(p.x) * sin(p.y * 1.13) * sin(p.z * 0.87)
-             + 0.5 * sin(p.x * 2.1 + p.z * 1.7) * sin(p.y * 1.9);
-      }
-
-      float churn(vec3 q, float t) {
-        // Work in cylindrical coordinates so the field can be made to *turn*.
-        // Plain 3D noise drifted as a block and read as fog; banding it by
-        // radius and advecting it around the axis is what gives the sphere a
-        // visible current running through it.
-        float r = length(q.xz);
-        float ang = atan(q.z, q.x);
-        // inner water turns faster than outer, as a stirred volume does
-        float spin = t * (1.35 - 0.55 * r);
-        vec3 sw = vec3(cos(ang + spin) * r, q.y, sin(ang + spin) * r);
-
-        vec3 warp = vec3(
-          wisp(sw * 1.7 + vec3(0.0, t * 0.5, 0.0)),
-          wisp(sw * 1.9 + vec3(t * 0.4, 0.0, 1.7)),
-          wisp(sw * 1.5 + vec3(2.3, 0.0, t * 0.45)));
-
-        // filaments stretched along the flow: fine across the bands, smooth along
-        float v = wisp(vec3(sw.x * 4.2, sw.y * 3.4, sw.z * 4.2) + warp * 0.7);
-        v += 0.5 * wisp(vec3(sw.x * 8.4, sw.y * 6.0, sw.z * 8.4) - warp * 0.5);
-        // concentric shells, so the eye can follow the rotation
-        v += 0.55 * sin(r * 11.0 - t * 2.1 + warp.y * 1.4);
-        return v * 0.62;
+      // Three crossed wave trains. Enough to break a mirror, cheap enough to
+      // run at full resolution — the water is most of the lower half of the
+      // opening frame, so it cannot be the expensive thing on screen.
+      vec3 ripple(vec2 p) {
+        float a = sin(p.x * 0.055 + uTime * 0.55) * 0.5 + sin(p.y * 0.041 - uTime * 0.42) * 0.5;
+        float b = sin((p.x + p.y) * 0.021 + uTime * 0.31);
+        float c = sin((p.x - p.y) * 0.087 - uTime * 0.9) * 0.35;
+        return normalize(vec3((a + c) * 0.045, 1.0, (b + c) * 0.045));
       }
 
       void main() {
-        vec3 ro = cameraPosition;
-        vec3 rd = normalize(vWorld - ro);
-        vec3 oc = ro - uCentre;
-        float b = dot(oc, rd);
-        float c2 = dot(oc, oc) - uRadius * uRadius;
-        float h = b * b - c2;
-        if (h < 0.0) discard;
-        h = sqrt(h);
-        float t0 = max(-b - h, 0.0);
-        float t1 = -b + h;
-        if (t1 <= t0) discard;
+        vec3 view = normalize(cameraPosition - vWorld);
+        vec3 n = ripple(vWorld.xz);
+        float fres = pow(1.0 - max(dot(view, n), 0.0), 4.0);
 
-        // The volume is not full: there is a water *surface* inside the shell,
-        // and it sloshes. Crossing it is what the eye reads as waves, so the
-        // march tracks which side of that surface each sample falls on and
-        // brightens the crossing into a foam line.
-        const int STEPS = 14;
-        float acc = 0.0;
-        float surf = 0.0;
-        float prevSide = 0.0;
-        float span = (t1 - t0) / float(STEPS);
-        for (int i = 0; i < STEPS; i++) {
-          vec3 p = ro + rd * (t0 + span * (float(i) + 0.5));
-          if (p.y > uFill) { prevSide = 0.0; continue; }
-          vec3 q = (p - uCentre) / uRadius;
-          float d = churn(q * 2.2, uTime);
-          acc += max(0.0, d) * (1.0 - dot(q, q) * 0.55);
+        vec3 deep = mix(vec3(0.055, 0.030, 0.022), vec3(0.010, 0.026, 0.044), uNight);
+        vec3 sky  = mix(vec3(0.90, 0.42, 0.14), vec3(0.10, 0.18, 0.30), uNight);
+        vec3 col = mix(deep, sky, clamp(fres * 1.5, 0.0, 1.0));
 
-          // the sloshing waterline: a plane, tilted and rippled over time
-          float level = 0.30
-            + 0.16 * sin(uTime * 0.62)
-            + 0.13 * sin(q.x * 3.1 + uTime * 1.35)
-            + 0.10 * sin(q.z * 2.7 - uTime * 1.08)
-            + 0.05 * sin((q.x + q.z) * 6.2 + uTime * 2.1);
-          float side = q.y - level;
-          if (i > 0 && side * prevSide < 0.0) {
-            // foam where the ray crosses the surface, brighter head-on
-            surf += 0.55 * (1.0 - abs(dot(normalize(q), rd)) * 0.4);
-          }
-          prevSide = side;
-        }
-        acc /= float(STEPS);
-        surf = clamp(surf, 0.0, 1.0);
+        // the sun's road across the water — the single strongest cue that this
+        // is a low sun over a sea and not a dark floor
+        vec3 h = normalize(normalize(uSun) + view);
+        float spec = pow(max(dot(n, h), 0.0), 220.0);
+        col += mix(vec3(2.6, 1.3, 0.42), vec3(0.5, 0.7, 1.0), uNight) * spec * 1.4;
 
-        float thickness = clamp((t1 - t0) / (2.0 * uRadius), 0.0, 1.0);
-        vec3 col = mix(uDeep, uColor, clamp(acc * 2.1, 0.0, 1.0));
-        col = mix(col, vec3(1.0), clamp(acc - 0.55, 0.0, 1.0) * 0.8);
-        float alpha = (0.06 + acc * 1.15) * thickness * uGain;
-        col = mix(col, vec3(1.0), surf * 0.85);
-        alpha = clamp(alpha + surf * 0.55, 0.0, 1.0);
-        gl_FragColor = vec4(col, alpha * 0.65);
+        float d = length(cameraPosition - vWorld);
+        float fog = 1.0 - exp(-pow(d * uFogDensity, 2.0));
+        col = mix(col, uFog, clamp(fog, 0.0, 1.0));
+
+        gl_FragColor = vec4(col, 1.0);
+        #include <colorspace_fragment>
       }
     `,
   })
-  const core = new THREE.Mesh(new THREE.SphereGeometry(POOL_RADIUS * 0.99, 32, 24), coreMaterial)
-  core.position.set(POOL.x, POOL.y, POOL.z)
-  core.renderOrder = 4
-  scene.add(core)
+}
 
-  // ---- post-processing -------------------------------------------------
-  // Bloom is what turns emissive strips into light. If the effect library
-  // fails to initialise for any reason we simply draw without it.
-  let composer: { render(dt?: number): void; setSize(w: number, h: number): void; dispose(): void } | null = null
-  // The composer may finish initialising after the first resize(), so the last
-  // requested size is remembered and replayed. Never derive this from the
-  // canvas's CSS box — the canvas is stretched by its container until the
-  // stage layout settles, which is what produced a 884x3750 buffer.
-  const lastSize = { width: 1, height: 1 }
-  const setupComposer = async () => {
-    try {
-      const pp = await import('postprocessing')
-      const c = new pp.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType })
-      c.addPass(new pp.RenderPass(scene, camera))
-      const bloom = new pp.BloomEffect({
-        // A low threshold made every lit surface bloom, and once the city
-        // came back the glow swallowed the buildings behind it. Only genuinely
-        // bright things blow out now.
-        intensity: tier === 'high' ? 1.15 : 0.9,
-        luminanceThreshold: 0.42,
-        luminanceSmoothing: 0.35,
-        mipmapBlur: true,
-        radius: tier === 'high' ? 0.72 : 0.5,
-      })
-      const vignette = new pp.VignetteEffect({ darkness: 0.38, offset: 0.34 })
-      c.addPass(new pp.EffectPass(camera, bloom, vignette))
-      renderer.toneMapping = THREE.ACESFilmicToneMapping
-      composer = c
-      composer.setSize(lastSize.width, lastSize.height)
-    } catch {
-      composer = null
+// -------------------------------------------------------------- the pyreflies
+/**
+ * 幻光虫.
+ *
+ * This is the Blender construction, moved onto the page — the same one the
+ * reference stills were rendered from, not an approximation of them.
+ *
+ *   * 340 separate grains laid along a curve. The grains are cubes, not
+ *     spheres: the reference is angular, and the trail reads like pixel art.
+ *     Smoothing them destroys exactly the quality that makes it a pyrefly.
+ *   * The path has an inflection. It leaves the head climbing to the upper
+ *     right, crosses an apex, and falls away. It is not a bent line.
+ *   * The grains spread as they get further from the head — the scatter radius
+ *     grows about eightfold down the tail.
+ *   * Colour runs along the path: incandescent → cyan → green → blue →
+ *     violet, with the brightness of each individual grain jittered.
+ *   * The bloom around the head is volume. A surface always shows its edge.
+ *
+ * The one thing that went wrong in Blender is worth keeping written down: at a
+ * grain emission of 22 every grain clipped to white, and the shape was right
+ * while not one of the colours survived. 1.9 for the grains, 28 for the head,
+ * is what actually holds the spectrum.
+ *
+ * On the page the grain count per fly is lower than 340 — the swarm is drawn
+ * hundreds of times over rather than once at close range — but the curve, the
+ * spread law, the ramp and the two brightnesses are the same numbers.
+ */
+function createPyreflies(count: number, time: { value: number }, alive: { value: number }) {
+  const GRAINS = count > 60 ? 96 : 52
+  const total = count * GRAINS
+
+  // one seed per fly, reused by every grain that belongs to it
+  type Fly = { x: number; y: number; z: number; sp: number; roll: number }
+  const fly: Fly[] = []
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2
+    const r = 60 + Math.random() ** 1.25 * 620
+    fly.push({
+      x: Math.cos(a) * r,
+      y: Math.random() ** 2.1 * 210 - 8,
+      z: Math.sin(a) * r,
+      sp: 0.4 + Math.random() * 1.5,
+      // The arc is built in the view plane so it always presents the shape the
+      // reference has. Rolling each fly by its own angle stops a whole swarm
+      // of identical hooks all pointing the same way.
+      roll: Math.random() * Math.PI * 2,
+    })
+  }
+
+  const quad = new THREE.PlaneGeometry(1, 1)
+
+  const seeds = new Float32Array(total * 4)
+  const us = new Float32Array(total)
+  const jit = new Float32Array(total * 3)
+  const rolls = new Float32Array(total)
+  let k = 0
+  for (let i = 0; i < count; i++) {
+    const f = fly[i]
+    for (let g = 0; g < GRAINS; g++) {
+      // Biased towards the head. An even spacing spends most of the grains on
+      // the thin end of the tail, where they are furthest apart and read as
+      // noise rather than as a trail.
+      const u = (g / (GRAINS - 1)) ** 1.12
+      seeds[k * 4 + 0] = f.x
+      seeds[k * 4 + 1] = f.y
+      seeds[k * 4 + 2] = f.z
+      seeds[k * 4 + 3] = f.sp
+      us[k] = u
+      jit[k * 3 + 0] = (Math.random() * 2 - 1)
+      jit[k * 3 + 1] = (Math.random() * 2 - 1)
+      jit[k * 3 + 2] = 0.45 + Math.random() * 1.1
+      rolls[k] = f.roll
+      k++
     }
   }
-  void setupComposer()
 
-  // ---- per-frame state -------------------------------------------------
-  let progress = 0
-  let shown = 0
-  let restore = 0
+  const geo = new THREE.InstancedBufferGeometry()
+  geo.index = quad.index
+  geo.attributes.position = quad.attributes.position
+  geo.attributes.uv = quad.attributes.uv
+  geo.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seeds, 4))
+  geo.setAttribute('aU', new THREE.InstancedBufferAttribute(us, 1))
+  geo.setAttribute('aJit', new THREE.InstancedBufferAttribute(jit, 3))
+  geo.setAttribute('aRoll', new THREE.InstancedBufferAttribute(rolls, 1))
+  geo.instanceCount = total
 
-  const api: CityScene = {
-    ready,
-    get restore() {
-      return restore
-    },
+  const uScale = { value: 1 }
 
-    setProgress(p: number) {
-      progress = clamp01(p)
-    },
+  // Shared by both passes: where a fly is, and where its tail used to be.
+  const COMMON = /* glsl */ `
+    uniform float uTime;
+    uniform float uScale;
 
-    render(dt: number) {
-      // Animation runs on a clamped step — a long stall must not teleport the
-      // water or fling the swarm across the scene.
-      const step = Math.min(0.05, dt)
-      time.value += step
-      // The camera ease, though, uses the real elapsed time. Clamping it too
-      // meant the eased position advanced a fixed fraction *per frame*, so on
-      // a machine drawing one frame a second the camera crawled toward the
-      // reader's scroll position for half a minute after they stopped.
-      shown += (progress - shown) * (1 - Math.exp(-4.5 * Math.min(2, dt)))
+    // Where one fly is at time t, and — with u > 0 — where the part of its
+    // tail that is u of the way back was, when it was there.
+    //
+    // The tail is not a shape bolted to the head. It is the path the fly
+    // actually took, sampled backwards in time, so it writhes because the
+    // flight writhes. A fixed arc, however well curved, is a dead thing being
+    // towed behind an animal; this one wanders because the animal wandered.
+    vec3 at(vec4 s, float t, float u, float roll) {
+      float sp = s.w;
+      float speed = 3.4 + sp * 4.6;
+      float lag = u * 3.0;
+      float tt = t - lag;
 
-      // Remap scroll onto the path so the camera settles on each chapter's
-      // shot *while that chapter's text is centred*. The panels are centred at
-      // (i + 0.5) / n, so the stops have to land there — anchoring them at
-      // i / (n - 1) instead, as a first version did, left every shot arriving a
-      // fifth of a screen after the words it belongs to.
-      const n = SECTION_STOPS.length
-      const p0 = 0.5 / n
-      const span = 1 / n
-      const slot = (clamp01(shown) - p0) / span
-      const i = Math.max(0, Math.min(n - 2, Math.floor(slot)))
-      const local = clamp01(slot - i)
-      // smoothstep has zero gradient at both ends: slow at the stops, quick in
-      // between, which is the dwell we want
-      const travel = SECTION_STOPS[i] + (SECTION_STOPS[i + 1] - SECTION_STOPS[i]) * smoothstep(0, 1, local)
+      // Height is taken from the head and walked back down rather than run
+      // through the same mod(), because a fly crossing the wrap point would
+      // otherwise throw its tail 330 units across the sky.
+      float y = mod(s.y + t * speed + s.x * 0.31, 330.0) - 24.0 - lag * speed;
 
-      posCurve.getPointAt(clamp01(travel), camPos)
-      targetCurve.getPointAt(clamp01(travel), camTarget)
+      // the slow drift
+      float wob = sin(tt * (0.28 + sp * 0.2) + s.x * 0.07) * (7.0 + sp * 9.0);
+      float wob2 = cos(tt * (0.19 + sp * 0.14) + s.z * 0.05) * (6.0 + sp * 7.0);
 
-      // Chapters that frame themselves. Blended in over the approach and out
-      // over the departure, so the path still carries the camera between them.
-      const eased = smoothstep(0, 1, local)
-      const camA = SECTION_CAMS[i]
-      const camB = SECTION_CAMS[i + 1]
-      if (camA) {
-        camPos.lerp(fixedPos.set(...camA.pos), 1 - eased)
-        camTarget.lerp(fixedTarget.set(...camA.target), 1 - eased)
+      // and the wriggle. Three periods that do not share a factor, fast
+      // enough that three seconds of tail holds about a wave and a half —
+      // which is what reads as something swimming rather than as a comet.
+      float w1 = sin(tt * 2.9 + roll) * (0.5 + u * 5.4);
+      float w2 = cos(tt * 2.3 + roll * 1.7) * (0.4 + u * 4.6);
+      float w3 = sin(tt * 3.7 + roll * 0.6) * (0.2 + u * 2.1);
+
+      return vec3(s.x + wob + w1, y + w3, s.z + wob2 + w2);
+    }
+  `
+
+  const material = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    // The quad is rebuilt in view space, and any basis with a negative
+    // determinant mirrors it, reverses its winding and sends it to the
+    // back-face cull. That is how an entire swarm can be computed correctly
+    // and still never reach a fragment. Not worth risking twice.
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    uniforms: { uTime: time, uAlive: alive, uScale },
+    vertexShader: /* glsl */ `
+      attribute vec4 aSeed;
+      attribute float aU;
+      attribute vec3 aJit;
+      attribute float aRoll;
+      varying float vU;
+      varying float vBri;
+      varying float vFade;
+      ${COMMON}
+
+      void main() {
+        float u = aU;
+        vec4 mv = viewMatrix * vec4(at(aSeed, uTime, u, aRoll), 1.0);
+        float depth = -mv.z;
+
+        // The grains scatter more the further back they are — about eightfold
+        // from head to tail. Kept in the view plane so the spread is always
+        // seen, never edge on.
+        mv.xy += aJit.xy * ((0.13 + u * 1.00) * uScale);
+
+        // Grains are small, and a small quad far away is nothing at all. Held
+        // to a floor in projected size so the far half of the swarm stays a
+        // swarm instead of dissolving into the sky.
+        float g = (0.40 - 0.15 * u) * uScale * clamp(depth / 170.0, 1.0, 3.2);
+        mv.xy += (uv - 0.5) * g;
+
+        vU = u;
+        vBri = aJit.z;
+        vFade = smoothstep(55.0, 165.0, depth) * (1.0 - smoothstep(900.0, 2200.0, depth));
+        gl_Position = projectionMatrix * mv;
       }
-      if (camB) {
-        camPos.lerp(fixedPos.set(...camB.pos), eased)
-        camTarget.lerp(fixedTarget.set(...camB.target), eased)
+    `,
+    fragmentShader: /* glsl */ `
+      varying float vU;
+      varying float vBri;
+      varying float vFade;
+
+      // Incandescent at the head, then cyan, green, blue, violet down the tail.
+      vec3 ramp(float u) {
+        vec3 white  = vec3(1.00, 0.96, 0.86);
+        vec3 cyan   = vec3(0.30, 0.96, 1.00);
+        vec3 green  = vec3(0.32, 1.00, 0.50);
+        vec3 blue   = vec3(0.24, 0.42, 1.00);
+        vec3 violet = vec3(0.60, 0.26, 0.98);
+        if (u < 0.06) return mix(white, cyan,  u / 0.06);
+        if (u < 0.34) return mix(cyan,  green, (u - 0.06) / 0.28);
+        if (u < 0.65) return mix(green, blue,  (u - 0.34) / 0.31);
+        return mix(blue, violet, (u - 0.65) / 0.35);
       }
 
-      // Push the subject to the side of frame the text is *not* on. The panels
-      // alternate left and right, and without this the stadium sits under the
-      // words as often as beside them. Swinging the aim rather than the camera
-      // keeps the flight path intact.
-      const sideNow = SECTION_SIDES[i] === 'left' ? -1 : 1
-      const sideNext = SECTION_SIDES[Math.min(SECTION_SIDES.length - 1, i + 1)] === 'left' ? -1 : 1
-      const bias = lerp(sideNow, sideNext, eased)
-      camForward.subVectors(camTarget, camPos)
-      const reach = camForward.length()
-      camForward.normalize()
-      camRight.crossVectors(camForward, camera.up).normalize()
-      camTarget.addScaledVector(camRight, bias * reach * 0.20)
+      void main() {
+        // A cube, not a sphere. The quad is left hard-edged on purpose: the
+        // moment these get a soft falloff the trail stops looking like a row
+        // of separate lights and starts looking like a smear.
+        float a = (1.0 - smoothstep(0.82, 1.0, vU)) * vFade;
 
-      camera.position.copy(camPos)
-      camera.lookAt(camTarget)
-      // a slow drift so a paused scroll never looks like a still image
-      camera.position.y += Math.sin(time.value * 0.35) * 0.5
-      camera.rotation.z += Math.sin(time.value * 0.21) * 0.004
-      // billboard the moon, and keep it pinned at a constant remove from the eye
-      moonGroup.position.copy(camera.position).addScaledVector(MOON_DIR, 2600)
-      moonGroup.quaternion.copy(camera.quaternion)
+        // 1.0, not 22 — and not 1.9 either, because the page puts a bloom
+        // pass after this that Blender's render did not. Above the bloom
+        // threshold every grain smears to white and the ramp is wasted; this
+        // is the same failure as the Blender one arriving by a different road.
+        gl_FragColor = vec4(ramp(vU) * 1.3 * vBri, a);
+        if (gl_FragColor.a < 0.004) discard;
+        #include <colorspace_fragment>
+      }
+    `,
+  })
 
-      restore = smoothstep(RESTORE_RANGE[0], RESTORE_RANGE[1], travel)
-      shared.amount.value = restore
-      shared.front.value = lerp(RESTORE_FRONT[0], RESTORE_FRONT[1], restore)
+  // ---- the head ------------------------------------------------------------
+  // One per fly. In Blender the bloom around it is a volume, because a surface
+  // always shows its edge; here that is a soft radial falloff with nothing
+  // hard anywhere in it, which is the same trick by another route.
+  const headSeeds = new Float32Array(count * 4)
+  const headRolls = new Float32Array(count)
+  for (let i = 0; i < count; i++) {
+    headSeeds[i * 4 + 0] = fly[i].x
+    headSeeds[i * 4 + 1] = fly[i].y
+    headSeeds[i * 4 + 2] = fly[i].z
+    headSeeds[i * 4 + 3] = fly[i].sp
+    // The wriggle is non-zero even at u = 0, so the head has to be evaluated
+    // with the same roll as its own grains or the glow sits a unit off the
+    // front of the trail it is supposed to be leading.
+    headRolls[i] = fly[i].roll
+  }
+  const headGeo = new THREE.InstancedBufferGeometry()
+  headGeo.index = quad.index
+  headGeo.attributes.position = quad.attributes.position
+  headGeo.attributes.uv = quad.attributes.uv
+  headGeo.setAttribute('aSeed', new THREE.InstancedBufferAttribute(headSeeds, 4))
+  headGeo.setAttribute('aRoll', new THREE.InstancedBufferAttribute(headRolls, 1))
+  headGeo.instanceCount = count
 
-      // Inside the sphere the world goes green and close. The camera passes
-      // straight through the water, so this is a real state the scene enters,
-      // not an effect: the fog thickens to water and everything tints.
-      const submersion = 1 - smoothstep(POOL_RADIUS * 0.72, POOL_RADIUS * 1.12,
-        camera.position.distanceTo(poolCentre))
-      const dawn = smoothstep(0.90, 1.0, travel)
-      fogColor.copy(PALETTE.fogRuin).lerp(PALETTE.fogCity, restore)
-      fogColor.lerp(PALETTE.dawn, dawn)
-      fogColor.lerp(PALETTE.submerged, submersion)
-      ;(scene.fog as THREE.FogExp2).density = lerp(lerp(0.0013, 0.00062, restore), 0.0055, submersion)
-      renderer.setClearColor(fogColor, 1)
-      renderer.toneMappingExposure = lerp(lerp(1.15, 1.32, dawn), 0.92, submersion)
-      sunrise.intensity = dawn * 3.2
-      sea.uniforms.uDawn.value = dawn
-      sea.uniforms.uDusk.value = (1 - restore) * (1 - dawn)
+  const headMat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    uniforms: { uTime: time, uAlive: alive, uScale },
+    vertexShader: /* glsl */ `
+      attribute vec4 aSeed;
+      attribute float aRoll;
+      varying vec2 vUv;
+      varying float vFade;
+      ${COMMON}
 
-      moon.color.copy(PALETTE.moonRuin).lerp(PALETTE.moonCity, restore)
-      moon.intensity = lerp(3.4, 1.8, restore)
-      ;(moonDisc.material as THREE.MeshBasicMaterial).opacity = lerp(1, 0.75, restore) * (1 - dawn * 0.85)
-      // the disc cools from a low sun to a moon as the city comes back
-      ;(moonDisc.material as THREE.MeshBasicMaterial).color
-        .copy(PALETTE.moon).lerp(PALETTE.moonCity, restore)
-      moonGroup.scale.setScalar(lerp(1.0, 0.55, restore))
-      ;(moonHalo.material as THREE.MeshBasicMaterial).opacity = lerp(0.10, 0.06, restore)
-      hemi.color.copy(PALETTE.skyRuin).lerp(PALETTE.skyCity, restore)
-      hemi.intensity = lerp(0.6, 1.35, restore)
-      counter.intensity = lerp(0.9, 1.5, restore) * (1 - dawn * 0.6)
-      // From outside this lamp is the sphere's inner glow. From inside the
-      // camera sits a few metres off it with inverse-square falloff, so at
-      // full strength it blows the whole interior out — it dims right down
-      // once the lens is in the water.
-      cityFill.intensity = lerp(1700, 3600, restore) * lerp(1, 0.07, submersion)
-      // The interior glow is meant to be read from outside. With the camera
-      // inside the sphere it is an additive shell wrapped around the lens and
-      // whites out the whole frame, so it goes away while submerged.
-      coreMaterial.uniforms.uGain.value = lerp(1.0, 1.35, restore) * (1.0 - submersion)
-      // the pool fills over its own slice of the scroll
-      const fill = smoothstep(0.08, 0.42, travel)
-      poolFront.value = lerp(POOL.y - POOL_RADIUS - 2, POOL.y + POOL_RADIUS + 2, fill)
-      coreMaterial.uniforms.uFill.value = poolFront.value
-      rimFill.intensity = lerp(300, 5200, restore) * lerp(1, 0.30, submersion)
-      sea.uniforms.uRestore.value = restore
-      materials.water.emissiveIntensity = lerp(0.30, 0.0, submersion)
-      // The nets and the scoreboard face are additive white. Fine across the
-      // bowl; inside the sphere they are a metre from the lens and bloom into
-      // a white wall, so they come down to a readable level.
-      materials.neon.opacity = lerp(1, 0.42, submersion)
-      // seen from within, the meniscus and the foam sit right on the lens
-      poolFoam.value = 1 - submersion
-      materials.water.opacity = 1
+      void main() {
+        vec4 vHead = viewMatrix * vec4(at(aSeed, uTime, 0.0, aRoll), 1.0);
+        float depth = -vHead.z;
+        float g = 1.5 * uScale * clamp(depth / 170.0, 1.0, 3.0);
+        vec4 mv = vHead + vec4((uv - 0.5) * g, 0.0, 0.0);
+        vUv = uv;
+        vFade = smoothstep(55.0, 165.0, depth) * (1.0 - smoothstep(900.0, 2200.0, depth));
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      varying vec2 vUv;
+      varying float vFade;
+      void main() {
+        float r = length(vUv - 0.5) * 2.0;
+        // core plus haze: two falloffs, neither of which ever reaches an edge
+        float core = exp(-pow(r / 0.17, 2.0));
+        float haze = exp(-pow(r / 0.42, 2.0)) * 0.34;
+        float a = clamp(core + haze, 0.0, 1.0) * vFade;
+        // 28 against the grains' 1.9 — the head is the only part allowed to
+        // burn out, and it is what makes the rest read as colour rather than
+        // as light.
+        vec3 col = mix(vec3(0.55, 0.92, 1.00), vec3(1.0, 0.98, 0.92), core);
+        gl_FragColor = vec4(col * (0.8 + core * 7.0), a);
+        if (gl_FragColor.a < 0.004) discard;
+        #include <colorspace_fragment>
+      }
+    `,
+  })
 
-      // the swarm peaks while the cladding is actually filling in
-      const moteUniforms = (motes.material as THREE.ShaderMaterial).uniforms
-      moteUniforms.uSurge.value = Math.sin(restore * Math.PI) ** 0.7
-      moteUniforms.uRestore.value = restore
-      moteUniforms.uScale.value = lerp(1, 1.25, restore)
-      // the swarm's heading turns roughly twice over the length of the scroll
-      const flowAngle = travel * Math.PI * 3.4
-      const flowStrength = 0.22 + 0.30 * (0.5 + 0.5 * Math.sin(travel * Math.PI * 2.2))
-      moteUniforms.uFlow.value.set(
-        Math.cos(flowAngle) * flowStrength,
-        0.18 * Math.sin(travel * Math.PI * 1.6),
-        Math.sin(flowAngle) * flowStrength,
-      )
-
-      if (composer) composer.render(step)
-      else renderer.render(scene, camera)
-    },
-
-    resize(width: number, height: number, dpr: number) {
-      lastSize.width = Math.max(1, Math.round(width))
-      lastSize.height = Math.max(1, Math.round(height))
-      // the motes project their own wake, so they need the pixel viewport
-      moteViewport.set(lastSize.width, lastSize.height)
-      renderer.setPixelRatio(dpr)
-      // updateStyle: true — the canvas must own its CSS size so no ancestor can
-      // stretch the buffer out of aspect
-      renderer.setSize(lastSize.width, lastSize.height, true)
-      composer?.setSize(lastSize.width, lastSize.height)
-      camera.aspect = lastSize.width / lastSize.height
-      camera.updateProjectionMatrix()
-    },
-
-    dispose() {
-      composer?.dispose()
-      core.geometry.dispose()
-      coreMaterial.dispose()
-      scene.environment?.dispose()
-      moonDisc.geometry.dispose()
-      ;(moonDisc.material as THREE.Material).dispose()
-      moonHalo.geometry.dispose()
-      ;(moonHalo.material as THREE.Material).dispose()
-      if (cityRoot) scene.remove(cityRoot)
-      for (const d of disposables) d.dispose()
-      for (const m of Object.values(materials)) m.dispose()
-      sea.mesh.geometry.dispose()
-      ;(sea.mesh.material as THREE.Material).dispose()
-      motes.geometry.dispose()
-      ;(motes.material as THREE.Material).dispose()
-      renderer.dispose()
-    },
+  const mesh = new THREE.Group()
+  const grainMesh = new THREE.Mesh(geo, material)
+  const headMesh = new THREE.Mesh(headGeo, headMat)
+  for (const m of [grainMesh, headMesh]) {
+    m.frustumCulled = false
+    m.renderOrder = 4
+    mesh.add(m)
   }
 
-  return api
+  return {
+    mesh,
+    material,
+    geo,
+    dispose() {
+      geo.dispose()
+      material.dispose()
+      headGeo.dispose()
+      headMat.dispose()
+      quad.dispose()
+    },
+  }
+}
+
+// ------------------------------------------------------------- inside the ball
+/**
+ * Cut the pitch out of the city.
+ *
+ * The exporter merges by material, so the whole city arrives as nine meshes —
+ * every window in Zanarkand and the blitzball scoreboard are one buffer with
+ * one bounding box. Classifying by that box put the entire city's glass into
+ * the pitch, which is how "make the goals visible" turned every window on the
+ * skyline into a scoreboard.
+ *
+ * So the split is done per triangle: anything whose centroid lands inside the
+ * ball of water becomes its own mesh, marked, and is taken out of the index of
+ * the mesh it came from. Both halves keep sharing one set of attributes — only
+ * the index differs — so this costs three extra draw calls and no memory.
+ */
+function splitPitch(city: THREE.Object3D, pool: THREE.Sphere) {
+  const NAMES = new Set(['TowerGlass', 'TowerTrim', 'TowerMetal'])
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3()
+  const targets: THREE.Mesh[] = []
+  city.traverse(obj => {
+    const mesh = obj as THREE.Mesh
+    if (mesh.isMesh && NAMES.has((mesh.material as THREE.Material)?.name ?? '')) targets.push(mesh)
+  })
+
+  for (const mesh of targets) {
+    const geo = mesh.geometry
+    const pos = geo.getAttribute('position') as THREE.BufferAttribute
+    const idx = geo.getIndex()
+    const tris = idx ? idx.count / 3 : pos.count / 3
+    const at = (i: number) => (idx ? idx.getX(i) : i)
+
+    const inside: number[] = []
+    const outside: number[] = []
+    const r2 = (pool.radius * 0.99) ** 2
+    for (let t = 0; t < tris; t++) {
+      const i0 = at(t * 3), i1 = at(t * 3 + 1), i2 = at(t * 3 + 2)
+      a.fromBufferAttribute(pos, i0).applyMatrix4(mesh.matrixWorld)
+      b.fromBufferAttribute(pos, i1).applyMatrix4(mesh.matrixWorld)
+      c.fromBufferAttribute(pos, i2).applyMatrix4(mesh.matrixWorld)
+      a.add(b).add(c).multiplyScalar(1 / 3)
+      ;(a.distanceToSquared(pool.center) < r2 ? inside : outside).push(i0, i1, i2)
+    }
+    if (!inside.length || !outside.length) continue
+
+    const cut = new THREE.BufferGeometry()
+    for (const key of Object.keys(geo.attributes)) cut.setAttribute(key, geo.attributes[key])
+    cut.setIndex(inside)
+    const lit = new THREE.Mesh(cut, mesh.material)
+    lit.userData.pitch = (mesh.material as THREE.Material).name
+    lit.position.copy(mesh.position)
+    lit.quaternion.copy(mesh.quaternion)
+    lit.scale.copy(mesh.scale)
+    mesh.parent?.add(lit)
+
+    geo.setIndex(outside)
+  }
+}
+
+// --------------------------------------------------------------- city lights
+/**
+ * The windows.
+ *
+ * A night city is not dark buildings under a dark sky — it is a field of lit
+ * windows with buildings implied behind them. The model has the buildings and
+ * a thin neon trim, which at night read as an unlit sculpture; what was
+ * missing is the thousands of small bright points that make a skyline a place
+ * where people are awake.
+ *
+ * Rather than author them, they are read off the city itself: every nth vertex
+ * of the stone and cladding meshes, taken in world space, becomes one lit
+ * window. That guarantees they sit on the actual buildings, follow the actual
+ * silhouette, and cost one draw call for the lot.
+ *
+ * Zanarkand is a blue city with warm rooms in it, so the mix is weighted to
+ * cyan-white with about a third going amber, and each one has its own slow
+ * pulse so the skyline is never quite still.
+ */
+function createWindows(city: THREE.Object3D, shared: Restore, night: { value: number }) {
+  const pts: number[] = []
+  const tmp = new THREE.Vector3()
+  // Buildings only, by the names the generator gave them — and this has to run
+  // before the model is dressed, because dressing throws those names away.
+  // Sampling everything put a lit window on every vertex of the blitzball
+  // sphere, which turned the hero of the shot into a disco ball.
+  // ArenaFar is the silhouette ring on the horizon. Lighting it is what turns
+  // a stadium standing in a valley into a stadium standing in a city — the
+  // skyline behind is most of the reason the shot reads as Zanarkand at all.
+  const LIT = new Set(['TowerStone', 'TowerTrim', 'TowerMetal', 'ArenaDeck', 'ArenaFar'])
+  city.traverse(obj => {
+    const mesh = obj as THREE.Mesh
+    if (!mesh.isMesh) return
+    const name = (mesh.material as THREE.Material)?.name ?? ''
+    if (!LIT.has(name)) return
+    const pos = mesh.geometry.getAttribute('position')
+    if (!pos) return
+    // Every vertex would be a quarter of a million lights; a few thousand is
+    // a skyline.
+    const step = Math.max(1, Math.round(pos.count / (name === 'ArenaFar' ? 2400 : 1500)))
+    for (let i = 0; i < pos.count; i += step) {
+      tmp.fromBufferAttribute(pos as THREE.BufferAttribute, i).applyMatrix4(mesh.matrixWorld)
+      // Nothing below the waterline, nothing in the sky, and a third thrown
+      // away so the spacing does not inherit the mesh's own regularity.
+      if (tmp.y < 6 || tmp.y > 460) continue
+      if (Math.random() < 0.34) continue
+      pts.push(tmp.x, tmp.y, tmp.z)
+    }
+    void name
+  })
+
+  const n = pts.length / 3
+  const seeds = new Float32Array(n * 3)
+  const kinds = new Float32Array(n)
+  for (let i = 0; i < n; i++) {
+    seeds[i * 3 + 0] = Math.random() * 100
+    seeds[i * 3 + 1] = 0.55 + Math.random() * 0.9   // brightness
+    seeds[i * 3 + 2] = 0.34 + Math.random() * 0.78  // size
+    kinds[i] = Math.random() < 0.34 ? 1 : 0         // warm or cool
+  }
+
+  const quad = new THREE.PlaneGeometry(1, 1)
+  const geo = new THREE.InstancedBufferGeometry()
+  geo.index = quad.index
+  geo.attributes.position = quad.attributes.position
+  geo.attributes.uv = quad.attributes.uv
+  geo.setAttribute('aPos', new THREE.InstancedBufferAttribute(new Float32Array(pts), 3))
+  geo.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seeds, 3))
+  geo.setAttribute('aWarm', new THREE.InstancedBufferAttribute(kinds, 1))
+  geo.instanceCount = n
+
+  const uniforms = {
+    uFront: shared.uFront,
+    uNight: night,
+    uTime: { value: 0 },
+  }
+
+  const material = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    uniforms,
+    vertexShader: /* glsl */ `
+      attribute vec3 aPos;
+      attribute vec3 aSeed;
+      attribute float aWarm;
+      uniform float uFront;
+      uniform float uTime;
+      varying vec2 vUv;
+      varying float vBri;
+      varying float vWarm;
+      void main() {
+        // the same front that brings the city in brings its lights on
+        if (aPos.y > uFront) {
+          gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+          return;
+        }
+        vec4 mv = viewMatrix * vec4(aPos, 1.0);
+        float depth = -mv.z;
+        // A window is a fixed size on the building, but below about a pixel
+        // it stops being a light at all, so it is held to a floor.
+        float g = aSeed.z * (0.9 + depth * 0.0022);
+        mv.xy += (uv - 0.5) * g;
+        vUv = uv;
+        vBri = aSeed.y * (0.72 + 0.28 * sin(uTime * (0.35 + aSeed.x * 0.02) + aSeed.x));
+        vWarm = aWarm;
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform float uNight;
+      varying vec2 vUv;
+      varying float vBri;
+      varying float vWarm;
+      void main() {
+        vec2 d = abs(vUv - 0.5);
+        // A window is a rectangle. Round ones read as bokeh, which is a
+        // photograph of a city rather than a city.
+        float a = (1.0 - smoothstep(0.30, 0.50, max(d.x, d.y * 1.5)));
+        vec3 cool = vec3(0.62, 0.86, 1.00);
+        vec3 warm = vec3(1.00, 0.74, 0.40);
+        vec3 col = mix(cool, warm, vWarm);
+        // They come up as the sky goes down.
+        float lit = 0.22 + 0.78 * uNight;
+        gl_FragColor = vec4(col * vBri * 0.95 * lit, a * (0.25 + 0.75 * uNight));
+        if (gl_FragColor.a < 0.004) discard;
+        #include <colorspace_fragment>
+      }
+    `,
+  })
+
+  const mesh = new THREE.Mesh(geo, material)
+  mesh.frustumCulled = false
+  mesh.renderOrder = 3
+  return {
+    mesh,
+    count: n,
+    uniforms,
+    dispose() {
+      geo.dispose()
+      material.dispose()
+      quad.dispose()
+    },
+  }
+}
+
+// ------------------------------------------------------------------- the rig
+export function createCityScene(
+  canvas: HTMLCanvasElement,
+  opts: { tier: Tier; onProgress?: (v: number) => void } = { tier: 'high' },
+): CityScene {
+  const { tier, onProgress } = opts
+
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: tier === 'high',
+    powerPreference: 'high-performance',
+    alpha: false,
+  })
+  renderer.setClearColor(0x1a0d08, 1)
+  renderer.toneMapping = THREE.ACESFilmicToneMapping
+  renderer.toneMappingExposure = 1.05
+  renderer.outputColorSpace = THREE.SRGBColorSpace
+
+  const scene = new THREE.Scene()
+  const camera = new THREE.PerspectiveCamera(FOV, 1, 1, 9000)
+
+  // Bloom.
+  //
+  // Everything that makes this world look like itself is emissive — window
+  // courses, the light along the arena's arms, the sphere, the pyreflies —
+  // and an emissive pixel with hard edges reads as a decal. Bleeding them into
+  // what is around them is the difference between lights drawn on a building
+  // and a building that is lit. It is the single highest-value pass here, so
+  // the low tier gets a cheaper version of it rather than none.
+  const composer = new EffectComposer(renderer)
+  composer.addPass(new RenderPass(scene, camera))
+  // A high threshold: only genuinely bright pixels bloom. Lower, and every
+  // lit window in the restored city smears into its neighbours and the whole
+  // model turns into a lamp.
+  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.8, 0.5, 0.92)
+  composer.addPass(bloom)
+
+  const time = { value: 0 }
+  const night = { value: 0 }
+  const shared: Restore = { uFront: { value: RESTORE_FRONT[0] }, uSeam: { value: 26 } }
+
+  const sunDir = new THREE.Vector3(...SUN_DIR).normalize()
+
+  // ---- sky, fog, light ---------------------------------------------------
+  const sky = createSky(sunDir)
+  scene.add(sky.mesh)
+
+  // Light haze, not weather. At the density the first pass used, the plain
+  // between the camera and the city washed out to flat orange and read as
+  // water — the ground disappeared into the sunset behind it.
+  const fogColor = new THREE.Color(0x8a3a12)
+  scene.fog = new THREE.FogExp2(fogColor.getHex(), 0.00016)
+
+  const sun = new THREE.DirectionalLight(0xffb066, 3.4)
+  sun.position.copy(sunDir).multiplyScalar(2000)
+  scene.add(sun)
+
+  // A second, much weaker light from behind the camera. The sun is almost
+  // edge-on to everything, so without this the near faces of the ruin are
+  // pure black and the silhouettes lose their shape entirely.
+  const fill = new THREE.DirectionalLight(0x2a3a55, 0.5)
+  fill.position.set(400, 300, 400)
+  scene.add(fill)
+
+  const ambient = new THREE.HemisphereLight(0xff8a45, 0x140a08, 0.55)
+  scene.add(ambient)
+
+  // ---- materials ----------------------------------------------------------
+  // Every one of these takes its variation from the wear colours baked into
+  // the model, which is why they can all be flat-shaded single colours and
+  // still not look like painted cardboard.
+  const rock = new THREE.MeshStandardMaterial({
+    color: 0x6b5b4a, roughness: 0.97, metalness: 0.0, flatShading: true, vertexColors: true,
+    // The heightfield is a single open surface and its faces are wound for
+    // Blender, which draws both sides. Seen from the front here, half of it
+    // was simply missing — the basin floor was culled and the sky showed
+    // through where the ground should be.
+    side: THREE.DoubleSide,
+  })
+  const stone = new THREE.MeshStandardMaterial({
+    color: 0x7c7367, roughness: 0.92, metalness: 0.0, flatShading: true, vertexColors: true,
+  })
+  const dark = new THREE.MeshStandardMaterial({
+    color: 0x33302c, roughness: 0.96, metalness: 0.0, flatShading: true, vertexColors: true,
+  })
+  const metal = new THREE.MeshStandardMaterial({
+    color: 0x4a4d55, roughness: 0.34, metalness: 0.92, flatShading: true, vertexColors: true,
+  })
+  const glow = new THREE.MeshBasicMaterial({ color: 0x4fd8d0, toneMapped: false, vertexColors: true })
+
+  // the restored city: dark blue-green metal, almost black in the mass
+  const clad = new THREE.MeshStandardMaterial({
+    color: 0x16302e, roughness: 0.42, metalness: 0.46, flatShading: true, vertexColors: true,
+  })
+  applyRestore(clad, shared, new THREE.Color(0x2ba7c4))
+
+  const neon = new THREE.MeshBasicMaterial({
+    color: 0xffffff, toneMapped: false, vertexColors: true,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  })
+  applyRestore(neon, shared, new THREE.Color(0x123c46))
+
+  const water = new THREE.MeshPhysicalMaterial({
+    color: 0xdff2fb, roughness: 0.10, metalness: 0.0,
+    transmission: tier === 'high' ? 0.92 : 0.0,
+    opacity: tier === 'high' ? 1.0 : 0.55, transparent: tier !== 'high',
+    // A short attenuation distance against a large sphere. Seventy feet of
+    // water does not show you what is on the far side of it: from outside, the
+    // goals should be a shape you half-see and then lose, and it is only when
+    // the camera goes *inside* that the pitch is legible.
+    // Clear, not milky.
+    //
+    // Thirteen units of attenuation across a seventy-unit sphere is a ball of
+    // paint: the goals and the board were inside it the whole time and not one
+    // pixel of them reached the glass. The point of building a stadium is that
+    // it can be seen into, so the water now reads as water — a tint and a
+    // refraction — rather than as a filter.
+    thickness: 12, attenuationColor: new THREE.Color(0x5fb6e0), attenuationDistance: 130,
+    ior: 1.333, emissive: new THREE.Color(0x2f7fb4), emissiveIntensity: 0.14,
+    clearcoat: 0.5, clearcoatRoughness: 0.10,
+    // FrontSide, so that standing inside the sphere — which the camera does
+    // for one chapter — the near wall is culled and the pitch inside is
+    // visible. With DoubleSide the shot is a blue wall two metres from the
+    // lens and nothing else.
+    side: THREE.FrontSide,
+  })
+  applyRestore(water, shared, new THREE.Color(0x59c8ff))
+  // The older model's pool, once scaled and lifted into the basin.
+  applyWaves(water, time, new THREE.Vector3(0, 25 * CITY_SCALE + CITY_LIFT, 0),
+             21 * CITY_SCALE)
+
+  const falls = new THREE.MeshStandardMaterial({
+    color: 0x9fd8e4, roughness: 0.18, metalness: 0.0, transparent: true, opacity: 0.72,
+    emissive: new THREE.Color(0x1d5f70), emissiveIntensity: 0.5, side: THREE.DoubleSide,
+  })
+  applyRestore(falls, shared, new THREE.Color(0x7fe2ff))
+
+  const sea = createWaterMaterial(time, night, sunDir)
+  const far = new THREE.MeshBasicMaterial({ color: 0x1a1017, fog: true })
+  // The far ring is city, not ruin. Without this it stood on the horizon of
+  // the opening shot, a skyline of intact towers behind a dead one.
+  applyRestore(far, shared, new THREE.Color(0x2ba7c4))
+
+  // What the ruin is made of. Its own restored layers — Clad, Neon, Pool,
+  // Falls — are deliberately absent from this table: the city that replaces it
+  // is the other model, and drawing both would put two Zanarkands on the same
+  // ground.
+  // Only the ground survives the transformation. Every ruined building is
+  // taken away by the same front that brings the city in.
+  for (const m of [stone, dark, metal, glow]) applyDissolve(m, shared)
+
+  const RUIN_MATS: Record<string, THREE.Material> = {
+    Rock: rock,
+    Stone: stone,
+    StoneDark: dark,
+    Metal: metal,
+    Glow: glow,
+    Sea: sea,
+  }
+
+  // The restored city. Everything in it is clipped by the front, so the whole
+  // model rises out of the ruin as one.
+  const cityStone = new THREE.MeshStandardMaterial({
+    color: 0x2e3a3c, roughness: 0.7, metalness: 0.12, flatShading: true,
+    // A lit city spills onto its own walls. Without this the stone stayed the
+    // same value at midnight as at dusk and the towers read as cut paper.
+    emissive: new THREE.Color(0x12303f), emissiveIntensity: 0.55,
+  })
+  const cityDark = new THREE.MeshStandardMaterial({
+    color: 0x141a1e, roughness: 0.85, metalness: 0.06, flatShading: true,
+  })
+  for (const m of [cityStone, cityDark]) applyRestore(m, shared, new THREE.Color(0x2ba7c4))
+
+  // The older model carries no wear colours, so it needs its own copies of
+  // anything that reads them. A material with `vertexColors` on and no COLOR_0
+  // attribute to read multiplies everything by black, which is exactly what
+  // the first attempt did: a city that loaded, drew, and was invisible.
+  const cityClad = new THREE.MeshStandardMaterial({
+    color: 0x1b3a3c, roughness: 0.44, metalness: 0.42, flatShading: true,
+    emissive: new THREE.Color(0x134050), emissiveIntensity: 0.65,
+  })
+  const cityMetal = new THREE.MeshStandardMaterial({
+    color: 0x4a4d55, roughness: 0.34, metalness: 0.9, flatShading: true,
+  })
+  // The city's own light.
+  //
+  // This model's lit surface is *small* — individual window panes set into
+  // reveals, not the broad glowing bands the older one had — so at half
+  // opacity the whole city read as unlit stone. Additive on tiny quads needs
+  // to be near full strength before any of it reaches the eye.
+  const cityNeon = new THREE.MeshBasicMaterial({
+    color: 0xcfeaff, toneMapped: false, transparent: true, opacity: 1.0,
+    depthWrite: false, blending: THREE.AdditiveBlending,
+  })
+  const cityGlow = new THREE.MeshBasicMaterial({ color: 0xffd9a0, toneMapped: false })
+  for (const m of [cityClad, cityMetal]) {
+    applyRestore(m, shared, new THREE.Color(0x2ba7c4))
+  }
+  // 45% of the lit surface goes warm — enough that the city reads as lamplit
+  // rather than as a circuit board, and not so much that it stops being
+  // Zanarkand, which is a blue city with warm rooms in it.
+  applyRestore(cityNeon, shared, new THREE.Color(0x2ba7c4), 0.45)
+  applyRestore(cityGlow, shared, new THREE.Color(0x2ba7c4), 0.6)
+
+  // Inside the sphere.
+  //
+  // The goals, the net and the scoreboard are drawn with the same materials as
+  // the rest of the city, which meant two things went wrong at once: the board
+  // was additive, so it never entered the transmission buffer and could not be
+  // seen through the water at all, and the frames were unlit stone at the far
+  // end of a night. They get their own lit, *opaque* materials so they land in
+  // the buffer the water samples and read as a floodlit pitch.
+  const pitchFrame = new THREE.MeshStandardMaterial({
+    color: 0xe8f4ff, roughness: 0.3, metalness: 0.4,
+    emissive: new THREE.Color(0x74c8f0), emissiveIntensity: 1.5, flatShading: true,
+  })
+  const pitchNet = new THREE.MeshStandardMaterial({
+    color: 0xbfe4f5, roughness: 0.5, metalness: 0.1,
+    emissive: new THREE.Color(0x3f9ec4), emissiveIntensity: 0.9, flatShading: true,
+  })
+  const pitchBoard = new THREE.MeshStandardMaterial({
+    color: 0xfff2d8, roughness: 0.35, metalness: 0.0,
+    emissive: new THREE.Color(0xffbe63), emissiveIntensity: 2.6, flatShading: true,
+  })
+  for (const m of [pitchFrame, pitchNet, pitchBoard]) {
+    applyRestore(m, shared, new THREE.Color(0x59c8ff))
+  }
+
+  // The names come from the generator: ztower's parts are Tower*, and the
+  // things zarena adds for itself are Arena*.
+  const CITY_MATS: Record<string, THREE.Material> = {
+    TowerStone: cityStone,
+    TowerTrim: cityClad,
+    TowerGlass: cityNeon,
+    TowerMetal: cityMetal,
+    ArenaWater: water,
+    ArenaNeon: cityNeon,
+    ArenaFar: far,
+    ArenaSea: cityDark,
+    ArenaDeck: cityDark,
+  }
+
+  // ---- pyreflies -----------------------------------------------------------
+  const pyre = { value: 0 }
+  const flies = createPyreflies(tier === 'high' ? 130 : 50, time, pyre)
+  scene.add(flies.mesh)
+
+  // ---- the model -----------------------------------------------------------
+  const loader = new GLTFLoader()
+  const draco = new DRACOLoader()
+  draco.setDecoderPath(DRACO_PATH)
+  loader.setDRACOLoader(draco)
+
+  const disposables: Array<{ dispose(): void }> = []
+  const roots: THREE.Object3D[] = []
+  let city: THREE.Object3D | null = null
+  let windows: ReturnType<typeof createWindows> | null = null
+
+  const dress = (root: THREE.Object3D, table: Record<string, THREE.Material>) => {
+    const drop: THREE.Mesh[] = []
+    root.traverse(obj => {
+      const mesh = obj as THREE.Mesh
+      if (!mesh.isMesh) return
+      const original = mesh.material as THREE.Material
+      const name = original?.name ?? ''
+      // splitPitch has already cut the pitch out of the city meshes and marked
+      // it; all that is left here is to hand it the lit materials.
+      const inside = mesh.userData.pitch as string | undefined
+      let replacement = inside
+        ? (inside === 'TowerGlass' ? pitchBoard : inside === 'TowerTrim' ? pitchNet : pitchFrame)
+        : table[name]
+      if (!replacement) {
+        // a layer this model is not responsible for — remove it outright
+        drop.push(mesh)
+        return
+      }
+      mesh.material = replacement
+      if (original && !Object.values(table).includes(original)) original.dispose()
+      // both models ship without normals; the smooth surfaces need them back
+      if (replacement === water || replacement === falls || replacement === sea) {
+        mesh.geometry.computeVertexNormals()
+      }
+      if (replacement === neon || replacement === cityNeon) mesh.renderOrder = 2
+      if (replacement === water || replacement === falls) mesh.renderOrder = 3
+      mesh.frustumCulled = true
+      disposables.push(mesh.geometry)
+    })
+    for (const mesh of drop) {
+      mesh.geometry.dispose()
+      mesh.removeFromParent()
+    }
+  }
+
+  const load = (url: string, onEach?: (n: number) => void) =>
+    new Promise<THREE.Object3D>((resolve, reject) => {
+      loader.load(
+        url,
+        gltf => resolve(gltf.scene),
+        evt => {
+          if (onEach && evt.total > 0) onEach(Math.min(1, evt.loaded / evt.total))
+        },
+        err => reject(err),
+      )
+    })
+
+  // Both are fetched at once. The city is not needed until the reader has
+  // scrolled, but it is the same request the browser would make later anyway
+  // and asking for it up front means the restoration never stutters.
+  const progressOf = [0, 0]
+  const bumpProgress = () => onProgress?.((progressOf[0] * 0.6 + progressOf[1] * 0.4))
+
+  const ready = Promise.all([
+    load(RUIN_URL, v => {
+      progressOf[0] = v
+      bumpProgress()
+    }),
+    load(CITY_URL, v => {
+      progressOf[1] = v
+      bumpProgress()
+    }),
+  ]).then(([ruinRoot, cityRoot]) => {
+    dress(ruinRoot, RUIN_MATS)
+    cityRoot.scale.setScalar(CITY_SCALE)
+    cityRoot.position.y = CITY_LIFT
+    cityRoot.updateMatrixWorld(true)
+    windows = createWindows(cityRoot, shared, night)
+
+    // Where the ball of water actually is, measured off the model rather than
+    // guessed — the guessed radius in the wave shader was less than half of it.
+    let pool: THREE.Sphere | undefined
+    cityRoot.traverse(obj => {
+      const mesh = obj as THREE.Mesh
+      if (!mesh.isMesh) return
+      if ((mesh.material as THREE.Material)?.name !== 'ArenaWater') return
+      mesh.geometry.computeBoundingSphere()
+      const bs = mesh.geometry.boundingSphere
+      if (!bs) return
+      pool = new THREE.Sphere(bs.center.clone().applyMatrix4(mesh.matrixWorld),
+                              bs.radius * CITY_SCALE)
+    })
+    if (pool) splitPitch(cityRoot, pool)
+    dress(cityRoot, CITY_MATS)
+    scene.add(ruinRoot, cityRoot)
+    roots.push(ruinRoot, cityRoot)
+    // The whole city is switched off until the restoration actually starts.
+    // Clipping alone was not enough: the far silhouette ring had never been
+    // given the front at all, and the sphere's own transmission pass put the
+    // blitzball goals on screen in the opening shot — in a ruin that is not
+    // supposed to have a stadium in it.
+    city = cityRoot
+    cityRoot.visible = false
+    scene.add(windows.mesh)
+  })
+
+  // ---- camera: one orbit ---------------------------------------------------
+  const camPos = new THREE.Vector3()
+  const camTarget = new THREE.Vector3()
+  const wantPos = new THREE.Vector3()
+  const wantTarget = new THREE.Vector3()
+  let seeded = false
+
+  /**
+   * Where the camera is at a given scroll position.
+   *
+   * A circle, eased. The angle is linear in the scroll — anything else makes
+   * the turn feel like it is being steered — while the radius and the height
+   * ease, so the approach happens in the middle of the move rather than all at
+   * the start.
+   */
+  const orbitAt = (p: number, pos: THREE.Vector3, target: THREE.Vector3) => {
+    // The scroll snaps to chapter *centres*, so the page comes to rest at
+    // 0.1, 0.3, 0.5, 0.7 and 0.9 and never at 0 or 1. Running the orbit over
+    // the raw 0..1 meant the two frames that were actually composed — the
+    // opening shot on the rim and the closing shot on the sphere — were the
+    // only two the reader never saw at rest; the last chapter stopped a tenth
+    // of a turn short, with the sphere off to one side. Mapped onto the
+    // resting range, chapter 00 *is* the opening frame and chapter 04 *is*
+    // the sphere, centred.
+    // Derived, not written down: the chapters rest at (i + 0.5) / n, so the
+    // first is half a chapter in and the last half a chapter short of the end.
+    const half = 0.5 / SECTIONS.length
+    const t = clamp01((clamp01(p) - half) / (1 - 2 * half))
+    const e = smoothstep(0, 1, t)
+    const a = ORBIT.startAngle + Math.PI * 2 * ORBIT.turns * t
+    const r = lerp(ORBIT.radius[0], ORBIT.radius[1], e)
+    const h = lerp(ORBIT.height[0], ORBIT.height[1], e)
+    // three.js: the model's +X is +X and its +Y is -Z
+    // A narrow window does not crop the top and bottom off this shot — the
+    // vertical field is fixed — it crops the *sides*, and the stadium is wider
+    // than it is tall. On a 3:2 laptop the stands ran off both edges and only
+    // the sphere was left. Backing off by the shortfall keeps the whole bowl
+    // in frame whatever shape the window is.
+    const wide = clamp01((16 / 9 - camera.aspect) / (16 / 9 - 1.2))
+    pos.set(Math.cos(a) * r * (1 + 0.30 * wide), h, -Math.sin(a) * r * (1 + 0.30 * wide))
+    // The aim swings onto the arena much earlier than the camera arrives.
+    // Easing both on the same curve meant that for most of the turn the shot
+    // was pointed seventy units off the axis, at a spot left over from the
+    // opening frame — so the building sat in a corner and the middle of the
+    // screen was empty sky.
+    const te = smoothstep(0, 0.26, t)
+    const [t0, t1] = ORBIT.target
+    target.set(lerp(t0[0], t1[0], te), lerp(t0[1], t1[1], te), lerp(t0[2], t1[2], te))
+  }
+
+  let progress = 0
+  const setProgress = (p: number) => {
+    progress = clamp01(p)
+  }
+
+  // ---- render --------------------------------------------------------------
+  let width = 1
+  let height = 1
+
+  const resize = (w: number, h: number, dpr: number) => {
+    width = Math.max(1, w)
+    height = Math.max(1, h)
+    renderer.setPixelRatio(dpr)
+    renderer.setSize(width, height, false)
+    composer.setPixelRatio(tier === 'high' ? dpr : Math.min(dpr, 1))
+    composer.setSize(width, height)
+    bloom.resolution.set(width, height)
+    camera.aspect = width / height
+    camera.updateProjectionMatrix()
+    flies.material.uniforms.uScale.value = Math.max(0.7, Math.min(1.6, height / 900))
+  }
+
+  const render = (dt: number) => {
+    const step = Math.min(dt, 0.05)
+    time.value += step
+
+    // ---- where the camera is
+    orbitAt(progress, wantPos, wantTarget)
+
+    if (!seeded) {
+      camPos.copy(wantPos)
+      camTarget.copy(wantTarget)
+      seeded = true
+    } else {
+      // Critically-damped-ish follow. The scroller can jump — a snap, a key,
+      // a click on the index — and a camera that teleports with it reads as a
+      // cut rather than as a move.
+      const k = 1 - Math.exp(-step * 9.0)
+      camPos.lerp(wantPos, k)
+      camTarget.lerp(wantTarget, k)
+    }
+
+    camera.position.copy(camPos)
+    camera.lookAt(camTarget)
+    sky.mesh.position.copy(camPos)
+    sky.mesh.scale.setScalar(6000)
+
+    // ---- the state of the world
+    const restore = smoothstep(RESTORE_RANGE[0], RESTORE_RANGE[1], progress)
+    shared.uFront.value = lerp(RESTORE_FRONT[0], RESTORE_FRONT[1], restore)
+    // the seam is widest mid-rebuild and gone by the end
+    shared.uSeam.value = 6 + 40 * Math.sin(restore * Math.PI) ** 0.8
+
+    // Nothing of the city exists until the front starts moving.
+    if (city) city.visible = restore > 0.0004
+    if (windows) {
+      windows.mesh.visible = restore > 0.0004
+      windows.uniforms.uTime.value = time.value
+    }
+
+    pyre.value = smoothstep(PYRE_RANGE[0], PYRE_RANGE[1], progress)
+    const n = smoothstep(NIGHT_RANGE[0], NIGHT_RANGE[1], progress)
+    night.value = n
+    sky.uniforms.uNight.value = n
+    sky.uniforms.uTime.value = time.value
+
+    // A night city lights itself. The moon is a rim light and nothing more —
+    // what makes the buildings readable is the bounce off the city's own
+    // windows, which is why the fill and the ambient climb so much harder
+    // than the key does. The version before this had a correct night and an
+    // unreadable one: a black sculpture against a black sky.
+    sun.intensity = lerp(3.4, 2.6, n)
+    sun.color.lerpColors(PALETTE.sunWarm, PALETTE.moonCool, n)
+    ambient.intensity = lerp(0.55, 2.6, n)
+    ambient.color.lerpColors(PALETTE.ambientDusk, PALETTE.ambientNight, n)
+    fill.intensity = lerp(0.5, 6.2, n)
+
+    const fog = scene.fog as THREE.FogExp2
+    fog.color.lerpColors(PALETTE.fogDusk, PALETTE.fogNight, n)
+    fog.density = lerp(0.00016, 0.00024, n)
+    ;(sea.uniforms.uFog.value as THREE.Color).copy(fog.color)
+    sea.uniforms.uFogDensity.value = fog.density
+
+    // the city has far more of its own light than the ruin does, so the bloom
+    // comes up with it rather than sitting at one strength throughout
+    bloom.strength = lerp(0.62, 1.30, n)
+
+    composer.render()
+  }
+
+  const dispose = () => {
+    for (const d of disposables) d.dispose()
+    for (const m of [...Object.values(RUIN_MATS), ...Object.values(CITY_MATS)]) m.dispose()
+    for (const r of roots) r.removeFromParent()
+    sky.material.dispose()
+    sky.mesh.geometry.dispose()
+    flies.dispose()
+    windows?.dispose()
+    for (const m of [pitchFrame, pitchNet, pitchBoard]) m.dispose()
+    draco.dispose()
+    composer.dispose()
+    renderer.dispose()
+  }
+
+  return { ready, render, resize, setProgress, dispose }
 }
