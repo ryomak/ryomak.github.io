@@ -21,7 +21,7 @@ export const MONOLITH_COLORS = {
 export const SECTIONS = [
   {
     id: 'intro',
-    title: 'ryomak',
+    title: 'kurisu',
     subtitle: 'Backend Engineer',
   },
   {

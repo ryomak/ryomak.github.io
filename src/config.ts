@@ -8,7 +8,7 @@ import type {
 import { LinkPreset } from './types/config'
 
 export const siteConfig: SiteConfig = {
-  title: 'ryomak',
+  title: 'kurisu',
   subtitle: 'profile',
   lang: 'ja',
   themeHue: 160,
@@ -51,7 +51,7 @@ export const navBarConfig: NavBarConfig = {
 
 export const profileConfig: ProfileConfig = {
   avatar: 'https://avatars.githubusercontent.com/u/21288308',
-  name: 'ryomak',
+  name: 'kurisu',
   bio: 'バックエンドエンジニア',
   links: [
     {

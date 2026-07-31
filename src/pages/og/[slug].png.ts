@@ -24,7 +24,7 @@ export async function GET({ params }: APIContext) {
   const { slug } = params
 
   const post = (await getCollection('posts')).find(post => post.slug === slug)
-  const title = post?.data.title ?? 'I am ryomak.'
+  const title = post?.data.title ?? 'I am kurisu.'
 
   const body = await getOgImage(title)
 

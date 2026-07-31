@@ -102,7 +102,7 @@ function start(): Cleanup {
   const scroller = document.createElement('div')
   scroller.className = 'city-scroller'
   scroller.tabIndex = 0
-  scroller.setAttribute('aria-label', 'ryomak')
+  scroller.setAttribute('aria-label', 'kurisu')
   scroller.style.setProperty('--city-scroll', `${SECTIONS.length * VH_PER_SECTION}vh`)
   const track = document.createElement('div')
   track.className = 'city-track'
