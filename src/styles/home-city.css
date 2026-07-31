@@ -48,6 +48,16 @@ html.home-city #top-row {
   position: relative;
   z-index: 60;
 }
+/* On phones the home layout's side padding (clamp(1.25rem, 5vw, 6rem)) was also
+   applied to the sticky header, leaving it a floating, inset rounded card while
+   every other page's header is full-bleed. Pull the header back out to the
+   viewport edges so the Top page matches the rest. */
+@media (max-width: 767px) {
+  html.home-city #top-row {
+    margin-left: calc(-1 * clamp(1.25rem, 5vw, 6rem));
+    margin-right: calc(-1 * clamp(1.25rem, 5vw, 6rem));
+  }
+}
 
 /* ---- stage mode: the document itself stops scrolling --------------------- */
 html.city-locked,
