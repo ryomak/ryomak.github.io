@@ -1029,8 +1029,8 @@ export function createCityScene(
   applyRestore(neon, shared, new THREE.Color(0x123c46))
 
   const water = new THREE.MeshPhysicalMaterial({
-    color: 0xdff2fb, roughness: 0.10, metalness: 0.0,
-    transmission: tier === 'high' ? 0.92 : 0.0,
+    color: 0xcfeaf8, roughness: 0.13, metalness: 0.0,
+    transmission: tier === 'high' ? 0.70 : 0.0,
     opacity: tier === 'high' ? 1.0 : 0.55, transparent: tier !== 'high',
     // A short attenuation distance against a large sphere. Seventy feet of
     // water does not show you what is on the far side of it: from outside, the
@@ -1043,8 +1043,8 @@ export function createCityScene(
     // pixel of them reached the glass. The point of building a stadium is that
     // it can be seen into, so the water now reads as water — a tint and a
     // refraction — rather than as a filter.
-    thickness: 12, attenuationColor: new THREE.Color(0x5fb6e0), attenuationDistance: 130,
-    ior: 1.333, emissive: new THREE.Color(0x2f7fb4), emissiveIntensity: 0.14,
+    thickness: 12, attenuationColor: new THREE.Color(0x5fb6e0), attenuationDistance: 52,
+    ior: 1.333, emissive: new THREE.Color(0x3990c8), emissiveIntensity: 0.62,
     clearcoat: 0.5, clearcoatRoughness: 0.10,
     // FrontSide, so that standing inside the sphere — which the camera does
     // for one chapter — the near wall is culled and the pitch inside is
@@ -1140,15 +1140,15 @@ export function createCityScene(
   // the buffer the water samples and read as a floodlit pitch.
   const pitchFrame = new THREE.MeshStandardMaterial({
     color: 0xe8f4ff, roughness: 0.3, metalness: 0.4,
-    emissive: new THREE.Color(0x74c8f0), emissiveIntensity: 1.5, flatShading: true,
+    emissive: new THREE.Color(0x8ad6f8), emissiveIntensity: 2.4, flatShading: true,
   })
   const pitchNet = new THREE.MeshStandardMaterial({
     color: 0xbfe4f5, roughness: 0.5, metalness: 0.1,
-    emissive: new THREE.Color(0x3f9ec4), emissiveIntensity: 0.9, flatShading: true,
+    emissive: new THREE.Color(0x59b6dc), emissiveIntensity: 1.5, flatShading: true,
   })
   const pitchBoard = new THREE.MeshStandardMaterial({
     color: 0xfff2d8, roughness: 0.35, metalness: 0.0,
-    emissive: new THREE.Color(0xffbe63), emissiveIntensity: 2.6, flatShading: true,
+    emissive: new THREE.Color(0xffc470), emissiveIntensity: 2.1, flatShading: true,
   })
   for (const m of [pitchFrame, pitchNet, pitchBoard]) {
     applyRestore(m, shared, new THREE.Color(0x59c8ff))
@@ -1349,7 +1349,11 @@ export function createCityScene(
     bloom.resolution.set(width, height)
     camera.aspect = width / height
     camera.updateProjectionMatrix()
-    flies.material.uniforms.uScale.value = Math.max(0.7, Math.min(1.6, height / 900))
+    // Capped low. This scales the pyreflies with the window so they keep the
+    // same apparent size, but on a tall display the old 1.6 ceiling made them
+    // nearly twice the size they were tuned at — the motes came back as the
+    // big bright worms they were supposed to have stopped being.
+    flies.material.uniforms.uScale.value = Math.max(0.75, Math.min(1.1, height / 900))
   }
 
   const render = (dt: number) => {
@@ -1367,7 +1371,12 @@ export function createCityScene(
       // Critically-damped-ish follow. The scroller can jump — a snap, a key,
       // a click on the index — and a camera that teleports with it reads as a
       // cut rather than as a move.
-      const k = 1 - Math.exp(-step * 9.0)
+      // Deliberately NOT the clamped step. The clamp exists so a tab that has
+      // been backgrounded does not teleport the world on its first frame back,
+      // but feeding it to the camera means that on a slow frame the follow
+      // falls behind real time and the shot never actually arrives — the
+      // composed frame is only ever approached, never reached.
+      const k = 1 - Math.exp(-Math.min(dt, 0.5) * 9.0)
       camPos.lerp(wantPos, k)
       camTarget.lerp(wantTarget, k)
     }
