@@ -22,6 +22,9 @@ export async function getStaticPaths() {
 const { deck } = Astro.props
 const { Content } = await deck.render()
 const deckTheme = `deck-theme-${deck.data.theme ?? 'midnight'}`
+const description = deck.data.description ?? deck.data.title
+const canonicalUrl = new URL(`/slides/${deck.slug}/`, Astro.site ?? Astro.url.origin)
+const ogImageUrl = new URL(`/og/slides/${deck.slug}.png`, Astro.site ?? Astro.url.origin)
 ---
 
 <!DOCTYPE html>
@@ -30,7 +33,24 @@ const deckTheme = `deck-theme-${deck.data.theme ?? 'midnight'}`
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{deck.data.title}</title>
-    <meta name="description" content={deck.data.description ?? deck.data.title} />
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content={deck.data.title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="675" />
+    <meta property="og:image:alt" content={deck.data.title} />
+    <meta property="og:locale" content="ja_JP" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={deck.data.title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageUrl} />
+    <meta name="twitter:image:alt" content={deck.data.title} />
     <link rel="stylesheet" href="https://cdn.staticfile.org/KaTeX/0.16.9/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous" />
   </head>
   <body class:list={['deck-body', deckTheme]}>
