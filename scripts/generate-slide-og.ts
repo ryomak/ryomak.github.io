@@ -1,11 +1,14 @@
 import { createReadStream } from 'node:fs'
-import { readdir, stat } from 'node:fs/promises'
+import { mkdir, readdir, stat } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { extname, join, normalize } from 'node:path'
 import puppeteer from 'puppeteer'
 import sharp from 'sharp'
 
 const distDir = join(process.cwd(), 'dist')
+const outputDir = join(process.cwd(), 'public', 'og', 'slides')
+
+await mkdir(outputDir, { recursive: true })
 
 const contentTypes: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
@@ -79,7 +82,7 @@ try {
     await sharp(screenshot)
       .resize(1200, 675)
       .png()
-      .toFile(join(distDir, 'og', 'slides', `${slug}.png`))
+      .toFile(join(outputDir, `${slug}.png`))
     await page.close()
   }
 } finally {

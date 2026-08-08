@@ -5,11 +5,12 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "tsx scripts/feed.ts && astro build && tsx scripts/generate-slide-og.ts && pagefind --site dist",
+    "build": "tsx scripts/feed.ts && astro build && pagefind --site dist",
     "preview": "astro preview",
     "astro": "astro",
     "new-post": "node scripts/new-post.js",
     "fetch-feed": "tsx scripts/feed.ts",
+    "generate-slide-og": "astro build && tsx scripts/generate-slide-og.ts",
     "format": "biome format --write ./src",
     "lint": "biome check --apply ./src",
     "generate-art": "tsx scripts/generate-art.ts"
