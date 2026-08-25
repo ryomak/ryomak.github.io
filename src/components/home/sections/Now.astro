@@ -1,66 +1,17 @@
 ---
-import { nowLead, mainFocus } from '../data'
-import '@fontsource-variable/jetbrains-mono'
+import { nowLead } from '../data'
 ---
 <div class="mg-now">
   <p class="mg-now-lead reveal" style="--d: 60ms">{nowLead}</p>
-  <div class="mg-focus reveal" style="--d: 160ms">
-    <span class="mg-focus-label">Main Focus</span>
-    <ul>
-      {mainFocus.map((item, i) => (
-        <li><span class="mg-focus-n">{String(i + 1).padStart(2, '0')}</span>{item}</li>
-      ))}
-    </ul>
-  </div>
 </div>
 
 <style lang="stylus">
   .mg-now
-    display: grid
-    grid-template-columns: 1fr
-    gap: 1.8rem
+    max-width: 42rem
   .mg-now-lead
     font-size: clamp(1.05rem, 2.2vw, 1.5rem)
     line-height: 1.7
     font-weight: 300
     letter-spacing: 0.01em
     color: var(--mg-ink)
-    max-width: 42rem
-  .mg-focus-label
-    display: block
-    font-family: 'JetBrains Mono Variable', monospace
-    font-size: 0.64rem
-    letter-spacing: 0.22em
-    text-transform: uppercase
-    color: var(--mg-muted)
-    margin-bottom: 0.9rem
-  .mg-focus ul
-    list-style: none
-    margin: 0
-    padding: 0
-    border-top: 1.5px dashed var(--mg-line)
-  .mg-focus li
-    display: flex
-    align-items: baseline
-    gap: 1rem
-    padding: 0.9rem 0.2rem
-    border-bottom: 1.5px dashed var(--mg-line)
-    font-size: clamp(1.5rem, 3.4vw, 2.1rem)
-    font-weight: 300
-    letter-spacing: 0.01em
-    color: var(--mg-ink)
-    transition: padding-left 0.35s cubic-bezier(0.22, 1, 0.36, 1)
-  .mg-focus li:hover
-    padding-left: 0.9rem
-  .mg-focus-n
-    font-family: 'JetBrains Mono Variable', monospace
-    font-size: 0.72rem
-    letter-spacing: 0.1em
-    color: var(--mg-muted)
-    flex-shrink: 0
-  @media (min-width: 900px)
-    .mg-now
-      grid-template-columns: 1.15fr 1fr
-      align-items: start
-      gap: 3.5rem
 </style>

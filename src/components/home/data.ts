@@ -47,9 +47,7 @@ export const skills = [
   'Firebase',
 ]
 
-export const mainFocus = ['決済領域', 'Go', 'Project']
-
-export const nowLead = '決済システムを開発・運用するエンジニア。'
+export const nowLead = 'プリペイドカードのシステム開発・運用。'
 
 export type HomeSection = {
   index: number
