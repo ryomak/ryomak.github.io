@@ -14,25 +14,48 @@ const props = Astro.props
 const { id, name, isCollapsed, collapsedHeight, style } = Astro.props
 const className = Astro.props.class
 ---
-<widget-layout data-id={id} data-is-collapsed={isCollapsed} class={"pb-4 card-base " + className} style={style}>
-    <div class="font-bold transition text-lg text-neutral-900 dark:text-neutral-100 relative ml-8 mt-4 mb-2
-        before:w-1 before:h-4 before:rounded-md before:bg-[var(--primary)]
-        before:absolute before:left-[-16px] before:top-[5.5px]">{name}</div>
-    <div id={id} class:list={["collapse-wrapper px-4 overflow-hidden", {"collapsed": isCollapsed}]}>
+<widget-layout data-id={id} data-is-collapsed={isCollapsed} class={"sidebar-section " + className} style={style}>
+    <div class="sidebar-heading">{name}</div>
+    <div id={id} class:list={["collapse-wrapper overflow-hidden", {"collapsed": isCollapsed}]}>
         <slot></slot>
     </div>
-    {isCollapsed && <div class="expand-btn px-4 -mb-2">
-        <button class="btn-plain w-full h-9 rounded-lg">
-            <div class="text-[var(--primary)] flex items-center justify-center gap-2 -translate-x-2">
-                <Icon name="material-symbols:more-horiz" size={28}></Icon> {i18n(I18nKey.more)}
-            </div>
+    {isCollapsed && <div class="expand-btn">
+        <button class="sidebar-more">
+            <Icon name="material-symbols:more-horiz" size={20}></Icon>
+            <span>{i18n(I18nKey.more)}</span>
         </button>
     </div>}
 </widget-layout>
 
 <style define:vars={{ collapsedHeight }}>
+    .sidebar-section {
+        display: block;
+        padding: 1.15rem 0.25rem 0;
+    }
+    .sidebar-heading {
+        margin: 0 0 0.75rem 0.5rem;
+        font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+        font-size: 0.65rem;
+        font-weight: 500;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(140, 140, 140, 0.85);
+    }
     .collapsed {
         height: var(--collapsedHeight);
+    }
+    .sidebar-more {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin: 0.4rem 0 0 0.35rem;
+        padding: 0.3rem 0.4rem;
+        color: rgba(140, 140, 140, 0.9);
+        font-size: 0.72rem;
+        transition: color 0.2s ease;
+    }
+    .sidebar-more:hover {
+        color: var(--primary);
     }
 </style>
 

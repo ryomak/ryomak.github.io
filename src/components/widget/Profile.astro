@@ -5,9 +5,9 @@ import { profileConfig } from '../../config'
 
 const config = profileConfig
 ---
-<div class="card-base px-5 py-6">
+<div class="profile-minimal">
     <a aria-label="Go to About Page" href="/"
-       class="group block relative mx-auto mb-4 max-w-[112px] overflow-hidden rounded-full active:scale-95">
+       class="group block relative profile-avatar overflow-hidden rounded-full active:scale-95">
         <div class="absolute transition pointer-events-none group-hover:bg-black/30 group-active:bg-black/50
         w-full h-full z-50 flex items-center justify-center">
             <Icon name="fa6-regular:address-card"
@@ -16,13 +16,38 @@ const config = profileConfig
         </div>
         <ImageWrapper src={config.avatar} alt="Profile Image of the Author" class="mx-auto lg:w-full h-full lg:mt-0 "></ImageWrapper>
     </a>
-    <div class="font-medium text-lg text-center mb-1 dark:text-neutral-50 transition">{config.name}</div>
-    <div class="text-center text-neutral-400 text-sm mb-4 transition">{config.bio}</div>
-    <div class="flex gap-2 justify-center">
+    <div class="profile-copy">
+      <div class="font-medium text-base mb-1 dark:text-neutral-50 transition">{config.name}</div>
+      <div class="text-neutral-400 text-xs leading-relaxed transition">{config.bio}</div>
+    </div>
+    <div class="profile-links">
         {config.links.map(item =>
-            <a rel="me" aria-label={item.name} href={item.url} target="_blank" class="btn-plain rounded-full h-9 w-9 active:scale-90">
-                <Icon name={item.icon} size="1.2rem"></Icon>
+            <a rel="me" aria-label={item.name} href={item.url} target="_blank" class="profile-link active:scale-90">
+                <Icon name={item.icon} size="1rem"></Icon>
             </a>
         )}
     </div>
 </div>
+
+<style lang="stylus">
+  .profile-minimal
+    display: grid
+    grid-template-columns: 3.5rem 1fr
+    gap: 0.9rem 1rem
+    align-items: center
+    padding: 1.25rem 0.75rem 0.6rem
+  .profile-avatar
+    width: 3.5rem
+    height: 3.5rem
+  .profile-copy
+    min-width: 0
+  .profile-links
+    grid-column: 2
+    display: flex
+    gap: 0.85rem
+  .profile-link
+    color: rgba(145, 145, 145, 0.85)
+    transition: color 0.2s ease
+  .profile-link:hover
+    color: var(--primary)
+</style>
