@@ -9,7 +9,7 @@ interface Props {
 }
 const { title, subtitle, count, countLabel } = Astro.props
 ---
-<header class="page-header reveal card-base px-6 py-7 md:px-8 md:py-9 mb-4">
+<header class="page-header reveal px-2 pt-10 pb-8 md:px-3 md:pt-14 md:pb-10 mb-4">
   <div class="ph-top">
     <h1 class="ph-title">{title}</h1>
     {count !== undefined && (
@@ -25,18 +25,19 @@ const { title, subtitle, count, countLabel } = Astro.props
     align-items: baseline
     gap: 1rem
   .ph-title
-    font-weight: 500
-    font-size: clamp(2rem, 5vw, 3.25rem)
-    letter-spacing: -0.045em
-    line-height: 1
+    font-weight: 400
+    font-size: clamp(2.7rem, 7vw, 5.4rem)
+    letter-spacing: -0.06em
+    line-height: 0.92
     white-space: nowrap
   .ph-count
     font-family: 'JetBrains Mono Variable', ui-monospace, monospace
-    font-size: 0.78rem
+    font-size: 0.68rem
+    letter-spacing: 0.08em
     color: rgba(128, 128, 128, 0.9)
     white-space: nowrap
   .ph-sub
-    margin-top: 0.9rem
+    margin-top: 1.35rem
     color: rgba(128, 128, 128, 0.95)
-    font-size: 0.92rem
+    font-size: 0.88rem
 </style>

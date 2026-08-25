@@ -86,17 +86,18 @@ const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(
     margin-bottom: 1rem
     text-decoration: none
     color: inherit
-    transition: border-color 0.25s ease
+    transition: transform 0.3s ease, background 0.25s ease
   .editor-card:hover
-    border-color: var(--meta-divider)
+    transform: translateY(-3px)
+    background: var(--btn-card-bg-hover)
   .editor-icon
     display: flex
     align-items: center
     justify-content: center
     width: 52px
     height: 52px
-    border-radius: 2px
-    border: 1px solid var(--line-color)
+    border-radius: 14px
+    background: var(--btn-regular-bg)
     color: var(--primary)
     flex-shrink: 0
     transition: transform 0.3s ease
@@ -124,7 +125,7 @@ const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(
     align-items: center
     gap: 0.45rem
     padding: 0.6rem 1.1rem
-    border-radius: 2px
+    border-radius: 999px
     background: var(--primary)
     /* --primary is near-white on the dark canvas, so the label has to take the
        page colour rather than a hard-coded white */
@@ -153,9 +154,7 @@ const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(
     font-weight: 500
     letter-spacing: -0.01em
   .sh-rule
-    flex: 1
-    height: 1px
-    background: var(--line-color)
+    display: none
 
   .art-gallery
     display: grid
@@ -167,14 +166,15 @@ const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(
     display: block
     position: relative
     background: var(--btn-regular-bg)
-    border-radius: 2px
+    border-radius: 14px
     overflow: hidden
     text-decoration: none
     color: inherit
-    border: 1px solid var(--line-color)
-    transition: border-color 0.25s ease
+    border: 0
+    transition: transform 0.35s ease, background 0.25s ease
   .artwork-card:hover
-    border-color: var(--meta-divider)
+    transform: translateY(-5px)
+    background: var(--btn-regular-bg-hover)
   .artwork-card:hover .card-overlay
     opacity: 1
   .artwork-card:hover .card-accent
@@ -190,7 +190,7 @@ const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(
     object-fit: cover
     transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)
   .artwork-card:hover .artwork-preview
-    transform: scale(1.025)
+    transform: scale(1.035)
 
   .card-overlay
     position: absolute
@@ -208,7 +208,7 @@ const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(
     color: var(--page-bg)
     padding: 0.4rem 1rem
     background: var(--primary)
-    border-radius: 2px
+    border-radius: 999px
 
   .card-info
     display: flex
@@ -228,15 +228,7 @@ const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(
     color: rgba(140, 140, 140, 0.85)
 
   .card-accent
-    position: absolute
-    bottom: 0
-    left: 0
-    right: 0
-    height: 3px
-    background: var(--primary)
-    transform: scaleX(0)
-    transform-origin: left
-    transition: transform 0.3s ease
+    display: none
 
   @media (max-width: 640px)
     .editor-card

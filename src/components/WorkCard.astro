@@ -66,9 +66,10 @@ const imageUrl =
   .work-card
     display: block
     overflow: hidden
-    transition: border-color 0.25s ease
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), background 0.25s ease
   .work-card:hover
-    border-color: var(--meta-divider)
+    transform: translateY(-5px)
+    background: var(--btn-card-bg-hover)
 
   .work-cover
     position: relative
@@ -81,7 +82,7 @@ const imageUrl =
     object-position: center
     transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)
   .work-card:hover .work-cover-img
-    transform: scale(1.025)
+    transform: scale(1.035)
   .work-overlay
     position: absolute
     inset: 0
@@ -100,7 +101,7 @@ const imageUrl =
     display: flex
     align-items: center
     justify-content: center
-    border-radius: 2px
+    border-radius: 999px
     background: var(--card-bg)
     color: var(--primary)
     font-size: 0.9rem
@@ -112,7 +113,7 @@ const imageUrl =
     transform: translateY(0) scale(1)
 
   .work-body
-    padding: 1.1rem 1.25rem 1.3rem
+    padding: 1.25rem 1.4rem 1.5rem
   .work-title
     font-size: 1.15rem
     font-weight: 500
