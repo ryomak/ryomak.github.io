@@ -184,7 +184,9 @@ color_set({
 
 @layer components {
     .card-base {
-        @apply rounded-[var(--radius-large)] overflow-hidden bg-[var(--card-bg)] transition;
+        @apply overflow-hidden bg-[var(--card-bg)] transition;
+        border-radius: 2px;
+        border: 1px solid var(--line-color);
     }
     h1, h2, h3, h4, h5, h6, p, a, span, li, ul, ol, blockquote, code, pre, table, th, td, strong {
         @apply transition;
@@ -199,7 +201,9 @@ color_set({
         @apply transition hover:bg-[var(--link-hover)] active:bg-[var(--link-active)] rounded-md p-1.5 -m-1.5;
     }
     .float-panel {
-        @apply top-[5.25rem] rounded-[var(--radius-large)] overflow-hidden bg-[var(--float-panel-bg)] transition shadow-xl dark:shadow-none
+        @apply top-[5.25rem] overflow-hidden bg-[var(--float-panel-bg)] transition;
+        border-radius: 2px;
+        border: 1px solid var(--line-color);
     }
     .float-panel.closed {
         @apply top-[4.75rem] opacity-0 pointer-events-none

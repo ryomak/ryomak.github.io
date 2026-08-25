@@ -9,14 +9,12 @@ interface Props {
 }
 const { title, subtitle, count, countLabel } = Astro.props
 ---
-<header class="page-header reveal card-base px-8 py-8 md:px-10 mb-4">
+<header class="page-header reveal card-base px-6 py-7 md:px-8 md:py-9 mb-4">
   <div class="ph-top">
-    <span class="ph-caret">&gt;</span>
     <h1 class="ph-title">{title}</h1>
     {count !== undefined && (
       <span class="ph-count">{count}{countLabel ? ` ${countLabel}` : ''}</span>
     )}
-    <div class="ph-rule"></div>
   </div>
   {subtitle && <p class="ph-sub">{subtitle}</p>}
 </header>
@@ -24,46 +22,21 @@ const { title, subtitle, count, countLabel } = Astro.props
 <style lang="stylus">
   .ph-top
     display: flex
-    align-items: center
-    gap: 0.7rem
-  .ph-caret
-    font-family: 'JetBrains Mono Variable', ui-monospace, monospace
-    color: var(--primary)
-    font-weight: 700
-    font-size: 1.4rem
-    opacity: 0.75
-    animation: ph-blink 1.2s steps(1) infinite
-  @keyframes ph-blink
-    0%, 49%
-      opacity: 0.75
-    50%, 100%
-      opacity: 0
+    align-items: baseline
+    gap: 1rem
   .ph-title
-    font-family: 'JetBrains Mono Variable', ui-monospace, monospace
-    font-weight: 700
-    font-size: clamp(1.6rem, 4vw, 2.2rem)
-    letter-spacing: -0.02em
+    font-weight: 500
+    font-size: clamp(2rem, 5vw, 3.25rem)
+    letter-spacing: -0.045em
     line-height: 1
     white-space: nowrap
   .ph-count
     font-family: 'JetBrains Mono Variable', ui-monospace, monospace
     font-size: 0.78rem
-    color: var(--primary)
-    padding: 0.15rem 0.55rem
-    border-radius: 999px
-    background: unquote('color-mix(in oklch, var(--primary) 14%, transparent)')
+    color: rgba(128, 128, 128, 0.9)
     white-space: nowrap
-  .ph-rule
-    flex: 1
-    height: 1px
-    margin-left: 0.3rem
-    background: unquote('linear-gradient(to right, color-mix(in oklch, var(--primary) 50%, transparent), transparent)')
   .ph-sub
-    margin-top: 0.7rem
+    margin-top: 0.9rem
     color: rgba(128, 128, 128, 0.95)
     font-size: 0.92rem
-
-  @media (prefers-reduced-motion: reduce)
-    .ph-caret
-      animation: none
 </style>

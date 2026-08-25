@@ -140,7 +140,7 @@ function formatTag(tag: string[]) {
   .arc-year
     font-family: 'JetBrains Mono Variable', ui-monospace, monospace
     font-size: 1.9rem
-    font-weight: 700
+    font-weight: 500
     letter-spacing: -0.02em
     color: var(--deep-text, #262626)
   :global(.dark) .arc-year
@@ -152,7 +152,7 @@ function formatTag(tag: string[]) {
   .arc-year-rule
     flex: 1
     height: 1px
-    background: unquote('linear-gradient(to right, color-mix(in oklch, var(--primary) 40%, transparent), transparent)')
+    background: var(--line-color)
 
   .arc-list
     position: relative
@@ -161,14 +161,15 @@ function formatTag(tag: string[]) {
   .arc-row
     position: relative
     display: grid
-    grid-template-columns: 3.4rem 1.6rem 1fr auto
+    grid-template-columns: 3.4rem 1fr auto
     align-items: center
     gap: 0.6rem
     padding: 0.55rem 0.6rem
-    border-radius: 0.5rem
-    transition: background 0.25s ease
+    border-radius: 0
+    border-bottom: 1px solid var(--line-color)
+    transition: color 0.2s ease
   .arc-row:hover
-    background: unquote('color-mix(in oklch, var(--primary) 8%, transparent)')
+    background: transparent
 
   .arc-date
     font-family: 'JetBrains Mono Variable', ui-monospace, monospace
@@ -177,33 +178,7 @@ function formatTag(tag: string[]) {
     text-align: right
 
   .arc-node
-    position: relative
-    display: flex
-    align-items: center
-    justify-content: center
-    height: 100%
-  // vertical connecting line
-  .arc-node::before
-    content: ""
-    position: absolute
-    left: 50%
-    top: -50%
-    height: 100%
-    border-left: 2px dashed var(--line-color, rgba(128,128,128,0.25))
-    transform: translateX(-1px)
-  .arc-dot
-    position: relative
-    z-index: 2
-    width: 0.4rem
-    height: 0.4rem
-    border-radius: 999px
-    background: oklch(0.6 0.04 var(--hue))
-    outline: 4px solid var(--card-bg)
-    transition: all 0.25s ease
-  .arc-row:hover .arc-dot
-    height: 1.2rem
-    background: var(--primary)
-
+    display: none
   .arc-title
     font-weight: 600
     font-size: 0.95rem
@@ -216,7 +191,6 @@ function formatTag(tag: string[]) {
   :global(.dark) .arc-title
     color: rgba(210, 210, 210, 0.95)
   .arc-row:hover .arc-title
-    transform: translateX(4px)
     color: var(--primary)
 
   // decks get a label instead of tags, and a filled dot on the timeline
@@ -229,9 +203,6 @@ function formatTag(tag: string[]) {
     border-radius: 999px
     padding: 0.08rem 0.5rem
     white-space: nowrap
-  .arc-row.is-slides .arc-dot
-    background: var(--primary)
-
   .arc-tags
     font-family: 'JetBrains Mono Variable', ui-monospace, monospace
     font-size: 0.74rem
@@ -246,5 +217,5 @@ function formatTag(tag: string[]) {
     .arc-kind
       display: none
     .arc-row
-      grid-template-columns: 3rem 1.4rem 1fr
+      grid-template-columns: 3rem 1fr
 </style>

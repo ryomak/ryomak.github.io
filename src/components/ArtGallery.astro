@@ -86,18 +86,17 @@ const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(
     margin-bottom: 1rem
     text-decoration: none
     color: inherit
-    transition: transform 0.3s ease, box-shadow 0.3s ease
+    transition: border-color 0.25s ease
   .editor-card:hover
-    transform: translateY(-3px)
-    box-shadow: unquote('0 16px 40px -20px color-mix(in oklch, var(--primary) 60%, transparent)')
+    border-color: var(--meta-divider)
   .editor-icon
     display: flex
     align-items: center
     justify-content: center
     width: 52px
     height: 52px
-    border-radius: 12px
-    background: unquote('color-mix(in oklch, var(--primary) 14%, transparent)')
+    border-radius: 2px
+    border: 1px solid var(--line-color)
     color: var(--primary)
     flex-shrink: 0
     transition: transform 0.3s ease
@@ -125,7 +124,7 @@ const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(
     align-items: center
     gap: 0.45rem
     padding: 0.6rem 1.1rem
-    border-radius: 8px
+    border-radius: 2px
     background: var(--primary)
     /* --primary is near-white on the dark canvas, so the label has to take the
        page colour rather than a hard-coded white */
@@ -147,26 +146,16 @@ const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(
     gap: 0.7rem
     margin-bottom: 1.4rem
   .sh-caret
-    font-family: 'JetBrains Mono Variable', ui-monospace, monospace
-    color: var(--primary)
-    font-weight: 700
-    font-size: 1.2rem
-    opacity: 0.75
-    animation: sh-blink 1.2s steps(1) infinite
-  @keyframes sh-blink
-    0%, 49%
-      opacity: 0.75
-    50%, 100%
-      opacity: 0
+    display: none
   .sh-title
     font-family: 'JetBrains Mono Variable', ui-monospace, monospace
     font-size: 1.15rem
-    font-weight: 700
+    font-weight: 500
     letter-spacing: -0.01em
   .sh-rule
     flex: 1
     height: 1px
-    background: unquote('linear-gradient(to right, color-mix(in oklch, var(--primary) 50%, transparent), transparent)')
+    background: var(--line-color)
 
   .art-gallery
     display: grid
@@ -178,14 +167,14 @@ const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(
     display: block
     position: relative
     background: var(--btn-regular-bg)
-    border-radius: 14px
+    border-radius: 2px
     overflow: hidden
     text-decoration: none
     color: inherit
-    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease
+    border: 1px solid var(--line-color)
+    transition: border-color 0.25s ease
   .artwork-card:hover
-    transform: translateY(-5px)
-    box-shadow: unquote('0 20px 44px -20px color-mix(in oklch, var(--primary) 60%, transparent)')
+    border-color: var(--meta-divider)
   .artwork-card:hover .card-overlay
     opacity: 1
   .artwork-card:hover .card-accent
@@ -201,7 +190,7 @@ const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(
     object-fit: cover
     transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)
   .artwork-card:hover .artwork-preview
-    transform: scale(1.06)
+    transform: scale(1.025)
 
   .card-overlay
     position: absolute
@@ -219,7 +208,7 @@ const sortedArts = [...arts].sort((a, b) => new Date(b.at).getTime() - new Date(
     color: var(--page-bg)
     padding: 0.4rem 1rem
     background: var(--primary)
-    border-radius: 20px
+    border-radius: 2px
 
   .card-info
     display: flex

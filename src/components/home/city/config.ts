@@ -74,7 +74,7 @@ export const WAYPOINTS: Waypoint[] = [
 ]
 
 /** Chapters framed by hand rather than by the curve. `null` means "on the path". */
-export const SECTION_CAMS: (Waypoint | null)[] = [null, null, null, null, null]
+export const SECTION_CAMS: (Waypoint | null)[] = [null, null, null, null]
 
 /** Vertical field of view. Narrow enough that the far towers keep their scale. */
 export const FOV = 38
@@ -96,13 +96,12 @@ export type SectionSpec = {
   side: 'left' | 'right'
 }
 
-/** The five chapters. Scroll progress is split evenly between them. */
+/** The four chapters. Scroll progress is split evenly between them. */
 export const SECTIONS: SectionSpec[] = [
   { id: 'sec-0', num: '00', name: '', label: 'HOME', side: 'left' },
   { id: 'sec-1', num: '01', name: 'Now', label: 'NOW', side: 'left' },
   { id: 'sec-2', num: '02', name: 'Selected Writing', label: 'WRITING', side: 'right' },
-  { id: 'sec-3', num: '03', name: 'Skills', label: 'SKILLS', side: 'left' },
-  { id: 'sec-4', num: '04', name: 'Generative', label: 'ART', side: 'right' },
+  { id: 'sec-3', num: '03', name: 'Generative', label: 'ART', side: 'right' },
 ]
 
 /** Which side each chapter's panel sits on, so the shot can lean the other way. */

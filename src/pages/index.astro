@@ -9,12 +9,11 @@ import CityStage from '@components/home/CityStage.astro'
 import CityHero from '@components/home/sections/CityHero.astro'
 import Now from '@components/home/sections/Now.astro'
 import Writing from '@components/home/sections/Writing.astro'
-import Skills from '@components/home/sections/Skills.astro'
 import ArtLink from '@components/home/sections/ArtLink.astro'
 
 import '../styles/home-city.css'
 
-const [hero, now, writing, skills, art] = SECTIONS
+const [hero, now, writing, art] = SECTIONS
 ---
 
 <MainGridLayout title={i18n(I18nKey.home)} description={profileConfig.bio} slug="none">
@@ -44,16 +43,7 @@ const [hero, now, writing, skills, art] = SECTIONS
         <Writing />
       </section>
 
-      <section class="city-sec" id={skills.id} data-city-sec="3" data-side={skills.side}>
-        <div class="city-chap reveal">
-          <span class="city-chap-num">{skills.num}</span>
-          <span class="city-chap-line"></span>
-          <span class="city-chap-name">{skills.name}</span>
-        </div>
-        <Skills />
-      </section>
-
-      <section class="city-sec" id={art.id} data-city-sec="4" data-side={art.side}>
+      <section class="city-sec" id={art.id} data-city-sec="3" data-side={art.side}>
         <div class="city-chap reveal">
           <span class="city-chap-num">{art.num}</span>
           <span class="city-chap-line"></span>
