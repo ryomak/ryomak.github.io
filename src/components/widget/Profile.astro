@@ -35,7 +35,7 @@ const config = profileConfig
     grid-template-columns: 3.5rem 1fr
     gap: 0.9rem 1rem
     align-items: center
-    padding: 1.25rem 0.75rem 0.6rem
+    padding: 1.1rem 0.5rem 0.8rem
   .profile-avatar
     width: 3.5rem
     height: 3.5rem
@@ -50,4 +50,30 @@ const config = profileConfig
     transition: color 0.2s ease
   .profile-link:hover
     color: var(--primary)
+  @media (max-width: 1023px)
+    .profile-minimal
+      grid-template-columns: 3rem minmax(0, 1fr) auto
+      gap: 0.7rem 0.9rem
+      padding: 1rem 0.25rem 0.7rem
+    .profile-avatar
+      width: 3rem
+      height: 3rem
+    .profile-links
+      grid-column: 3
+      grid-row: 1
+      align-self: center
+      gap: 1rem
+    .profile-link
+      display: flex
+      align-items: center
+      justify-content: center
+      width: 2.25rem
+      height: 2.25rem
+  @media (max-width: 420px)
+    .profile-minimal
+      grid-template-columns: 3rem minmax(0, 1fr)
+    .profile-links
+      grid-column: 2
+      grid-row: 2
+      justify-content: flex-start
 </style>

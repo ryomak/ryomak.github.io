@@ -64,11 +64,6 @@ export const profileConfig: ProfileConfig = {
       icon: 'fa6-brands:github',
       url: 'https://github.com/ryomak',
     },
-    {
-      name: 'Zenn',
-      icon: 'zenn',
-      url: 'https://zenn.dev/ryomak',
-    },
   ],
 }
 

@@ -30,7 +30,7 @@ const className = Astro.props.class
 <style define:vars={{ collapsedHeight }}>
     .sidebar-section {
         display: block;
-        padding: 1.15rem 0.25rem 0;
+        padding: 1rem 0.25rem 0;
     }
     .sidebar-heading {
         margin: 0 0 0.75rem 0.5rem;
@@ -56,6 +56,14 @@ const className = Astro.props.class
     }
     .sidebar-more:hover {
         color: var(--primary);
+    }
+    @media (max-width: 1023px) {
+        .sidebar-section {
+            padding-top: 0.9rem;
+        }
+        .sidebar-heading {
+            margin-left: 0.3rem;
+        }
     }
 </style>
 

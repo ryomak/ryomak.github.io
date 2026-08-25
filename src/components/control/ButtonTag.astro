@@ -23,4 +23,8 @@ const { size, dot, href, label }: Props = Astro.props
     transition: color 0.2s ease
   .tag-link:hover
     color: var(--primary)
+  @media (max-width: 1023px)
+    .tag-link
+      min-height: 2.5rem
+      padding: 0.55rem 0.6rem
 </style>
