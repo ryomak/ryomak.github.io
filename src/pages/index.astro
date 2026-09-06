@@ -3,67 +3,52 @@ import MainGridLayout from '../layouts/MainGridLayout.astro'
 import { i18n } from '../i18n/translation'
 import I18nKey from '../i18n/i18nKey'
 import { profileConfig } from '../config'
-
 import { SECTIONS } from '@components/home/city/config'
 import CityStage from '@components/home/CityStage.astro'
 import CityHero from '@components/home/sections/CityHero.astro'
 import Now from '@components/home/sections/Now.astro'
 import Writing from '@components/home/sections/Writing.astro'
 import ArtLink from '@components/home/sections/ArtLink.astro'
-
 import '../styles/home-city.css'
-
-const [hero, now, writing, art] = SECTIONS
 ---
-
 <MainGridLayout title={i18n(I18nKey.home)} description={profileConfig.bio} slug="none">
   <div class="city" data-city>
     <CityStage />
-
-    <div class="city-panels" data-city-panels>
-      <section class="city-sec" id={hero.id} data-city-sec="0" data-side={hero.side}>
-        <CityHero />
-      </section>
-
-      <section class="city-sec" id={now.id} data-city-sec="1" data-side={now.side}>
-        <div class="city-chap reveal">
-          <span class="city-chap-num">{now.num}</span>
-          <span class="city-chap-line"></span>
-          <span class="city-chap-name">{now.name}</span>
-        </div>
-        <Now />
-      </section>
-
-      <section class="city-sec" id={writing.id} data-city-sec="2" data-side={writing.side}>
-        <div class="city-chap reveal">
-          <span class="city-chap-num">{writing.num}</span>
-          <span class="city-chap-line"></span>
-          <span class="city-chap-name">{writing.name}</span>
-        </div>
-        <Writing />
-      </section>
-
-      <section class="city-sec" id={art.id} data-city-sec="3" data-side={art.side}>
-        <div class="city-chap reveal">
-          <span class="city-chap-num">{art.num}</span>
-          <span class="city-chap-line"></span>
-          <span class="city-chap-name">{art.name}</span>
-        </div>
-        <ArtLink />
-      </section>
+    <section class="city-sec city-hero" id="sec-0" data-city-sec="0" data-side="left">
+      <div class="city-copy"><CityHero /></div>
+      <a class="city-scroll-invitation" href="#city-memory">SCROLL TO REMEMBER <span>↓</span></a>
+    </section>
+    <div class="city-vista" id="city-memory" aria-hidden="true">
+      <p class="city-scene-caption"><span>A CITY, REMEMBERED</span><span>水と光、その記憶。</span></p>
     </div>
-
-    <!-- supplies the scroll distance the camera path is mapped onto -->
-    <div class="city-spacer" aria-hidden="true"></div>
+    <section class="city-sec" id="sec-1" data-city-sec="1" data-side="left">
+      <div class="city-copy">
+        <div class="city-chap"><span class="city-chap-num">01</span><span class="city-chap-line"></span><h2>Now</h2></div>
+        <Now />
+      </div>
+    </section>
+    <div class="city-vista city-vista-build" aria-hidden="true"></div>
+    <section class="city-sec" id="sec-2" data-city-sec="2" data-side="right">
+      <div class="city-copy">
+        <div class="city-chap"><span class="city-chap-num">02</span><span class="city-chap-line"></span><h2>Selected Writing</h2></div>
+        <Writing />
+      </div>
+    </section>
+    <section class="city-sec" id="sec-3" data-city-sec="3" data-side="right">
+      <div class="city-copy">
+        <div class="city-chap"><span class="city-chap-num">03</span><span class="city-chap-line"></span><h2>Generative</h2></div>
+        <ArtLink />
+      </div>
+    </section>
+    <div class="city-status" data-city-status aria-hidden="true">
+      <span data-city-phase>01 / AFTERGLOW</span>
+      <span class="city-progress-track"><i data-city-progress></i></span>
+    </div>
+    <nav class="city-index" aria-label="ページ内ナビゲーション">
+      {SECTIONS.map(section => <a href={`#${section.id}`} data-city-jump><span>{section.num}</span><span>{section.label}</span></a>)}
+    </nav>
   </div>
 </MainGridLayout>
-
-<style lang="stylus">
-  .city
-    position: relative
-    font-family: 'Roboto', -apple-system, sans-serif
-</style>
-
 <script>
   import '../scripts/home-city'
 </script>

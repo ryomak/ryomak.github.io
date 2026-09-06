@@ -1,576 +1,115 @@
-/* Zanarkand top page.
-
-   Two layouts share one set of markup:
-
-     .city              stacked sections, in normal document flow. This is what
-                        the server renders, what crawlers read, and what runs
-                        when WebGL is unavailable or motion is reduced.
-
-     stage mode         the canvas, the panels and the chapter index are lifted
-                        out to <body> and pinned to the viewport; a scroller of
-                        our own supplies the scroll distance. The page itself
-                        never scrolls.
-
-   Stage mode is entered from script (src/scripts/home-city.ts), which is also
-   why its selectors hang off <html class="city-locked"> rather than off .city —
-   by then the elements no longer live inside .city. */
-
 html.home-city {
-  --city-ink: #eef4f8;
-  --city-muted: #8fa6b5;
-  --city-line: rgba(200, 226, 240, 0.24);
-  --city-accent: #7fe6ff;
-  --city-bg: #05080d;
-  background-color: var(--city-bg) !important;
-  --card-bg: transparent !important;
-  --page-bg: #05080d !important;
-  --primary: #eef4f8 !important;
-  --deep-text: #eef4f8 !important;
-  --title-active: #ffffff !important;
-  --line-color: rgba(200, 226, 240, 0.18) !important;
-  --btn-content: #cfe0ea !important;
-  --float-panel-bg: #0b131b !important;
-
-  /* The section components (Now / Writing / Skills / ArtLink) are reused
-     verbatim from the previous top page; re-pointing their tokens at the night
-     palette is all that was needed to move them onto the stage. */
+  --city-ink: #edf1ef;
+  --city-muted: #a5b8ba;
+  --city-accent: #a9e8dd;
+  --city-line: rgb(198 229 226 / 22%);
+  --city-bg: #070e17;
   --mg-bg: var(--city-bg);
   --mg-ink: var(--city-ink);
   --mg-muted: var(--city-muted);
   --mg-line: var(--city-line);
-  --mg-tag: #0b131b;
+  --mg-tag: #142025;
+  --card-bg: transparent !important;
+  --page-bg: #070e17 !important;
+  --primary: #edf1ef !important;
+  --deep-text: #edf1ef !important;
+  --title-active: #fff !important;
+  --line-color: rgb(198 229 226 / 18%) !important;
+  --btn-content: #d4e4e1 !important;
+  --float-panel-bg: #142025 !important;
+  background: var(--city-bg) !important;
+  scroll-behavior: smooth;
 }
-
-html.home-city #main-grid {
-  background: transparent;
-}
-html.home-city #top-row {
-  position: relative;
-  z-index: 60;
-}
-/* On phones the home layout's side padding (clamp(1.25rem, 5vw, 6rem)) was also
-   applied to the sticky header, leaving it a floating, inset rounded card while
-   every other page's header is full-bleed. Pull the header back out to the
-   viewport edges so the Top page matches the rest. */
-@media (max-width: 767px) {
-  html.home-city #top-row {
-    margin-left: calc(-1 * clamp(1.25rem, 5vw, 6rem));
-    margin-right: calc(-1 * clamp(1.25rem, 5vw, 6rem));
-  }
-}
-
-/* ---- stage mode: the document itself stops scrolling --------------------- */
-html.city-locked,
-html.city-locked body {
-  height: 100%;
-  overflow: hidden;
-  overscroll-behavior: none;
-}
-/* the shell's footer has nowhere to go on a one-screen page */
-html.city-locked #footer,
-html.city-locked #back-to-top-btn {
-  display: none;
-}
-/* .city is left behind in the grid once its children are lifted out */
-html.city-locked .city {
-  min-height: 0;
-}
-
-.city {
-  position: relative;
-  color: var(--city-ink);
-}
-
-/* ------------------------------------------------------------- the stage */
-.city-stage {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-body > .city-stage {
-  position: fixed;
-}
-.city-stage canvas {
-  position: absolute;
-  inset: 0;
-  display: block;
-  opacity: 0;
-  transition: opacity 1.6s ease;
-}
-/* before the scene owns its own size, don't let the canvas stretch */
-.city:not(.is-stage) .city-stage canvas {
-  width: 100%;
-  height: 100%;
-}
-.city.is-loaded .city-stage canvas,
-body > .city-stage.is-loaded canvas {
-  opacity: 1;
-}
+html.home-city #main-grid { background: transparent; z-index: 1; }
+html.home-city #top-row { z-index: 30; }
+html.home-city #footer { position: relative; z-index: 2; }
+.city { position: relative; color: var(--city-ink); }
+.city-stage { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+body > .city-stage { position: fixed; }
+.city-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1.8s ease; }
+.city-stage.is-loaded canvas { opacity: 1; }
 .city-stage-fallback {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(90% 60% at 50% 82%, rgba(20, 92, 118, 0.5), transparent 70%),
-    radial-gradient(60% 40% at 22% 18%, rgba(120, 170, 200, 0.16), transparent 70%),
-    linear-gradient(180deg, #04070c 0%, #060d15 55%, #08161f 100%);
-  transition: opacity 1.4s ease;
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, #111b29, #112a35 55%, #070e17);
 }
-.city-stage-fallback::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 34%;
-  background: linear-gradient(180deg, transparent, rgba(127, 230, 255, 0.1));
-  animation: city-tide 9s ease-in-out infinite alternate;
+.city-stage::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgb(4 10 17 / 13%), transparent 20%, transparent 75%, rgb(4 10 17 / 28%));
 }
-@keyframes city-tide {
-  from {
-    opacity: 0.5;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(-6px);
-  }
-}
-.city.is-loaded .city-stage-fallback {
-  opacity: 0;
-}
-
-/* ---------------------------------------------------------- the scroller */
-.city-scroller {
-  position: fixed;
-  inset: 0;
-  z-index: 10;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  outline: none;
-  /* the viewport height the script measured; falls back to the dynamic unit */
-  --city-vh: 100dvh;
-}
-.city-scroller::-webkit-scrollbar {
-  display: none;
-}
-.city-track {
-  height: calc(var(--city-scroll, 620vh) - var(--city-vh));
-}
-
-/* ---------------------------------------------------------- the panels */
-.city-panels {
+.city-sec { position: relative; z-index: 2; padding: 5rem 0; scroll-margin-top: 3rem; }
+.city-copy { width: min(33rem, 100%); }
+.city-sec[data-side='right'] .city-copy { margin-left: auto; }
+.city.is-stage .city-sec { min-height: 105svh; display: flex; align-items: center; }
+.city.is-stage .city-hero { min-height: calc(100svh - 6.5rem); align-items: center; }
+.city.is-stage .city-copy {
   position: relative;
-  z-index: 2;
+  text-shadow: 0 2px 18px rgb(1 9 15 / 75%);
 }
-.city-scroller .city-panels {
-  position: sticky;
-  top: 0;
-  height: var(--city-vh);
+.city.is-stage .city-copy::before {
+  content: ''; position: absolute; z-index: -1;
+  inset: -5rem -6rem;
+  background: radial-gradient(ellipse at center, rgb(4 11 18 / 72%), rgb(4 11 18 / 32%) 48%, transparent 72%);
   pointer-events: none;
 }
-
-.city-sec {
-  position: relative;
-  padding: 5rem 0;
+.city-chap { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.8rem; }
+.city-chap h2 { font-size: 1.45rem; font-weight: 300; letter-spacing: .02em; }
+.city-chap-num { font-family: 'JetBrains Mono Variable', monospace; color: var(--city-accent); font-size: .65rem; }
+.city-chap-line { width: 2rem; height: 1px; background: var(--city-line); }
+.city .mg-name { font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: clamp(5rem, 11vw, 10rem); letter-spacing: -.065em; }
+.city .mg-eyebrow { font-size: .6rem; letter-spacing: .22em; color: #c3d0cd; }
+.city .mg-caption { font-size: .67rem; letter-spacing: .23em; }
+.city .mg-bio { font-size: .85rem; }
+.city .mg-social { gap: 1.8rem; margin-top: 2rem; }
+.city .mg-link { font-size: .68rem; letter-spacing: .17em; }
+.city-vista { display: none; }
+.city.is-stage .city-vista { display: grid; position: relative; z-index: 2; min-height: 75svh; place-items: end center; padding-bottom: 10svh; }
+.city.is-stage .city-vista-build { min-height: 120svh; }
+.city-scene-caption { display: grid; gap: .75rem; text-align: center; color: #d4e2df; text-shadow: 0 2px 12px #030b12; }
+.city-scene-caption span:first-child { font-family: 'JetBrains Mono Variable', monospace; font-size: .58rem; letter-spacing: .42em; }
+.city-scene-caption span:last-child { font-size: .75rem; letter-spacing: .3em; font-weight: 300; }
+.city-scroll-invitation { display: none; }
+.city.is-stage .city-scroll-invitation { display: flex; position: absolute; bottom: 2.5rem; left: 0; gap: 1.5rem; align-items: center; font: .56rem 'JetBrains Mono Variable', monospace; letter-spacing: .2em; color: #d3dfda; }
+.city-scroll-invitation span { font-size: 1.4rem; }
+.city-status { display: none; }
+body > .city-status { display: flex; position: fixed; z-index: 15; bottom: 1.8rem; right: 3rem; gap: 1.3rem; align-items: center; color: #c1d7d4; font: .52rem 'JetBrains Mono Variable', monospace; letter-spacing: .16em; pointer-events: none; }
+.city-progress-track { width: 4rem; height: 1px; background: rgb(212 237 231 / 20%); }
+.city-progress-track i { display: block; width: 100%; height: 100%; background: #b8f0d9; transform: scaleX(0); transform-origin: left; }
+.city-index { display: none; }
+body > .city-index { position: fixed; top: 50%; right: 1.7rem; z-index: 20; display: grid; gap: .9rem; transform: translateY(-50%); }
+.city-index a { display: flex; align-items: center; gap: .7rem; font: .56rem 'JetBrains Mono Variable', monospace; color: #8eaaa9; padding: .4rem; }
+.city-index a span:last-child { width: 0; overflow: hidden; opacity: 0; transition: opacity .3s; }
+.city-index a[aria-current], .city-index a:hover { color: #d1ffe9; }
+.city-index a:focus-visible { outline: 1px solid #c0f2e5; outline-offset: 4px; }
+.city-index a:hover span:last-child { width: 4rem; opacity: 1; }
+.city-hint { display: none; }
+.city-boot[hidden] { display: none; }
+.city-boot { position: absolute; left: 0; top: 68svh; z-index: 10; pointer-events: none; transition: opacity .8s; }
+.city-boot.is-done { opacity: 0; }
+.city-boot-inner { display: grid; gap: .65rem; }
+.city-boot-mark { display: none; }
+.city-boot-bar { width: 9rem; height: 1px; background: rgb(219 240 231 / 20%); }
+.city-boot-bar span { display: block; height: 100%; background: #a9e8dd; transition: width .3s; }
+.city-boot-note { font: .5rem 'JetBrains Mono Variable', monospace; letter-spacing: .12em; color: #9db9b3; }
+@media (min-width: 901px) {
+  .city.is-stage .city-copy { width: min(31rem, 37vw); }
 }
-.city-scroller .city-sec {
-  position: absolute;
-  top: 50%;
-  translate: 0 -50%;
-  width: min(36rem, 44vw);
-  padding: 0;
-  opacity: 0;
-  will-change: opacity, transform;
-  /* the city behind the text is bright and moving, so the type carries its own
-     shadow on top of the scrim */
-  text-shadow: 0 1px 2px rgba(2, 6, 10, 0.95), 0 2px 10px rgba(2, 6, 10, 0.9), 0 4px 30px rgba(2, 6, 10, 0.8);
-}
-.city-scroller .city-sec[data-side='left'] {
-  left: clamp(1.5rem, 6vw, 7rem);
-}
-.city-scroller .city-sec[data-side='right'] {
-  right: clamp(4.2rem, 8vw, 9.5rem);
-  text-align: right;
-}
-.city-scroller .city-sec[data-side='right'] .city-chap {
-  justify-content: flex-end;
-}
-/* A scrim so the text stays readable over the brightest parts of the city.
-   Two layers: a wide, very soft pool that reaches past the words, and a tight
-   near-opaque core behind them. One gradient alone had to choose between
-   being visible as a dark blob and being too weak over the lit stands. The
-   blur pushes the city itself out of focus behind the words, which does more
-   for legibility than any amount of darkening. */
-.city-scroller .city-sec::before {
-  content: '';
-  position: absolute;
-  inset: -4.5rem -6rem;
-  z-index: -1;
-  background:
-    radial-gradient(52% 54% at 34% 50%, rgba(3, 6, 11, 0.90), rgba(3, 6, 11, 0.66) 48%, transparent 74%),
-    radial-gradient(78% 76% at 34% 50%, rgba(3, 6, 11, 0.52), transparent 80%);
-  backdrop-filter: blur(7px) saturate(0.85);
-  -webkit-backdrop-filter: blur(7px) saturate(0.85);
-  mask-image: radial-gradient(78% 76% at 34% 50%, #000 42%, transparent 78%);
-  pointer-events: none;
-}
-.city-scroller .city-sec[data-side='right']::before {
-  background:
-    radial-gradient(52% 54% at 66% 50%, rgba(3, 6, 11, 0.90), rgba(3, 6, 11, 0.66) 48%, transparent 74%),
-    radial-gradient(78% 76% at 66% 50%, rgba(3, 6, 11, 0.52), transparent 80%);
-  mask-image: radial-gradient(78% 76% at 66% 50%, #000 42%, transparent 78%);
-}
-
-.city-chap {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.6rem;
-}
-.city-chap-num {
-  font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
-  font-size: 0.78rem;
-  letter-spacing: 0.18em;
-  color: var(--city-accent);
-}
-.city-chap-line {
-  width: 2.5rem;
-  height: 1px;
-  background: var(--city-line);
-}
-.city-chap-name {
-  font-size: 1.4rem;
-  font-weight: 300;
-}
-
-.city-spacer {
-  display: none;
-}
-
-/* ------------------------------------------------------ chapter index */
-.city-index {
-  position: fixed;
-  top: 50%;
-  translate: 0 -50%;
-  right: 1.1rem;
-  z-index: 40;
-  padding: 0.6rem 0.5rem;
-  font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
-  opacity: 0;
-  transition: opacity 0.8s ease;
-}
-.city-index.is-visible {
-  opacity: 1;
-}
-.city-index-head {
-  display: none;
-}
-.city-index ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.city-index li {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.55rem;
-  height: 2rem;
-  cursor: pointer;
-  color: var(--city-muted);
-  transition: color 0.3s ease;
-}
-.city-index li:hover {
-  color: var(--city-ink);
-}
-/* the label only unfolds on hover, so the rail stays out of the layout */
-.city-index .nm {
-  max-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  opacity: 0;
-  transition: max-width 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
-}
-.city-index li:hover .nm,
-.city-index li.is-current .nm {
-  max-width: 5rem;
-  opacity: 1;
-}
-.city-index li.is-current {
-  color: var(--city-accent);
-}
-.city-index .n {
-  position: relative;
-  order: 2;
-  font-size: 0.66rem;
-  width: 1.3rem;
-  text-align: right;
-}
-.city-index .n::after {
-  content: '';
-  position: absolute;
-  right: -0.5rem;
-  top: 50%;
-  width: 0.75rem;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.35;
-  transform: scaleX(0.45);
-  transform-origin: right;
-  transition: opacity 0.3s ease, transform 0.35s ease;
-}
-.city-index li.is-current .n::after {
-  opacity: 1;
-  transform: scaleX(1);
-}
-.city-index .nm {
-  order: 1;
-  font-size: 0.58rem;
-  letter-spacing: 0.14em;
-}
-
-/* -------------------------------------------------------- scroll hint */
-.city-hint {
-  display: none;
-}
-body > .city-hint {
-  position: fixed;
-  left: 50%;
-  bottom: calc(1.6rem + env(safe-area-inset-bottom, 0px));
-  translate: -50% 0;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
-  font-size: 0.6rem;
-  letter-spacing: 0.3em;
-  color: var(--city-muted);
-  transition: opacity 0.5s ease;
-  pointer-events: none;
-}
-html.city-scrolled body > .city-hint {
-  opacity: 0;
-}
-.city-hint i {
-  display: block;
-  width: 3rem;
-  height: 1px;
-  background: var(--city-line);
-  position: relative;
-  overflow: hidden;
-}
-.city-hint i::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  width: 40%;
-  background: var(--city-accent);
-  animation: city-scroll 2s ease-in-out infinite;
-}
-@keyframes city-scroll {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(250%);
-  }
-}
-
-/* ------------------------------------------------------------- phones */
 @media (max-width: 900px) {
-  .city-index {
-    top: auto;
-    bottom: calc(1.2rem + env(safe-area-inset-bottom, 0px));
-    right: 0.9rem;
-    width: auto;
-    padding: 0.4rem 0.5rem;
-    display: flex;
-    gap: 0.35rem;
-  }
-  .city-index-head {
-    display: none;
-  }
-  .city-index ul {
-    display: flex;
-    gap: 0.25rem;
-  }
-  .city-index li {
-    height: auto;
-    padding: 0.3rem;
-  }
-  .city-index .nm {
-    display: none;
-  }
-  .city-index .n::after {
-    display: none;
-  }
-
-  /* Panels sit low so the city stays visible above the text.
-     The scrim is the panel's own background rather than a ::before: the panel
-     clips its overflow to cap its height, which was cutting the pseudo-element
-     off and leaving a hard horizontal edge across the city exactly where the
-     fade was supposed to be. As the box's own background the gradient starts
-     fully transparent at the top of the box, so there is no edge to see, and
-     the box runs to the bottom of the viewport so there is none underneath
-     either. */
-  .city-scroller .city-sec,
-  .city-scroller .city-sec[data-side='right'] {
-    top: auto;
-    bottom: 0;
-    translate: none;
-    width: auto;
-    left: 0;
-    right: 0;
-    text-align: left;
-    max-height: 82svh;
-    overflow: hidden;
-    padding: 7rem 1.15rem calc(3.8rem + env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(
-      180deg,
-      transparent 0%,
-      rgba(4, 8, 13, 0.14) 26%,
-      rgba(4, 8, 13, 0.55) 44%,
-      rgba(4, 8, 13, 0.88) 62%,
-      rgba(4, 8, 13, 0.96) 78%,
-      rgba(4, 8, 13, 0.97) 100%
-    );
-  }
-  .city-scroller .city-sec[data-side='right'] .city-chap {
-    justify-content: flex-start;
-  }
-  .city-scroller .city-sec::before,
-  .city-scroller .city-sec[data-side='right']::before {
-    display: none;
-  }
-  /* the reused row layouts are tuned for a wide column; tighten them here */
-  .city-scroller .city-sec .mg-row {
-    grid-template-columns: 1fr auto;
-    gap: 0.25rem 0.6rem;
-    padding: 0.75rem 0;
-  }
-  .city-scroller .city-sec .mg-row-title {
-    font-size: 0.88rem;
-  }
-  .city-scroller .city-sec .mg-focus li {
-    font-size: 1.25rem;
-    padding: 0.6rem 0.2rem;
-  }
-  .city-scroller .city-sec .mg-now-lead {
-    font-size: 1rem;
-  }
-  .city-chap {
-    margin-bottom: 1rem;
-  }
-  .city-chap-name {
-    font-size: 1.15rem;
-  }
-  body > .city-hint {
-    bottom: calc(3.6rem + env(safe-area-inset-bottom, 0px));
-  }
+  .city.is-stage .city-sec { align-items: flex-end; min-height: 110svh; padding-bottom: 12svh; }
+  .city.is-stage .city-hero { min-height: calc(100svh - 6rem); padding-bottom: 23svh; }
+  .city.is-stage .city-copy { width: min(32rem, 100%); }
+  .city-sec[data-side='right'] .city-copy { margin-left: 0; }
+  .city.is-stage .city-copy::before { inset: -4rem -3rem -5rem; background: radial-gradient(ellipse, rgb(3 11 18 / 85%), rgb(3 11 18 / 55%) 50%, transparent 73%); }
+  .city.is-stage .city-vista-build { min-height: 90svh; }
+  body > .city-status { right: 1.2rem; bottom: 1.1rem; }
+  body > .city-index { top: auto; right: auto; bottom: .7rem; left: 1rem; display: flex; gap: .25rem; transform: none; }
+  .city-index a span:last-child { display: none; }
+  .city-scroll-invitation { bottom: 8svh !important; }
+  .city .mg-name { font-size: clamp(5rem, 18vw, 8rem); }
+  .city .mg-row { grid-template-columns: 1fr auto; gap: .4rem; }
+  .city .mg-focus li { font-size: 1.25rem; }
 }
-
-/* very short viewports (landscape phones) */
-@media (max-height: 520px) {
-  .city-scroller .city-sec {
-    max-height: 74svh;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .city-stage-fallback::after,
-  .city-hint i::after {
-    animation: none;
-  }
+  html.home-city { scroll-behavior: auto; }
+  .city-stage canvas, .city-boot { transition: none; }
 }
-
-/* ---------------------------------------------------------------- loading --
-   Shown from the moment the script decides the stage is worth attempting, and
-   taken away again either when the stage takes over or when the page gives up
-   and falls back to the stacked layout. It is fixed to the viewport and lifted
-   to <body> along with the stage, for the same reason: an ancestor in the
-   shared layout is transformed. */
-body > .city-boot {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  display: grid;
-  place-items: center;
-  background:
-    radial-gradient(120% 90% at 50% 30%, #241521 0%, #140d16 45%, #0a070c 100%);
-  transition: opacity 620ms ease, visibility 620ms;
-}
-
-body > .city-boot.is-done {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.city-boot-inner {
-  display: grid;
-  justify-items: center;
-  gap: 1.1rem;
-  padding: 0 2rem;
-  text-align: center;
-}
-
-/* three rising sparks — the same idea as the pyreflies in the scene */
-.city-boot-mark {
-  display: flex;
-  gap: 0.55rem;
-  height: 2.4rem;
-  align-items: flex-end;
-}
-
-.city-boot-mark i {
-  width: 3px;
-  height: 100%;
-  border-radius: 2px;
-  background: linear-gradient(to top, transparent, #63f0d8 55%, #fff);
-  transform-origin: bottom;
-  animation: city-boot-spark 1.5s ease-in-out infinite;
-}
-
-.city-boot-mark i:nth-child(2) { animation-delay: 0.22s; }
-.city-boot-mark i:nth-child(3) { animation-delay: 0.44s; }
-
-@keyframes city-boot-spark {
-  0%, 100% { transform: scaleY(0.22); opacity: 0.35; }
-  50%      { transform: scaleY(1);    opacity: 1; }
-}
-
-.city-boot-bar {
-  width: min(240px, 56vw);
-  height: 2px;
-  border-radius: 2px;
-  background: rgb(255 255 255 / 0.12);
-  overflow: hidden;
-}
-
-.city-boot-bar > span {
-  display: block;
-  height: 100%;
-  width: 0%;
-  border-radius: 2px;
-  background: linear-gradient(90deg, #63f0d8, #ffb45e);
-  transition: width 260ms ease;
-}
-
-.city-boot-note {
-  margin: 0;
-  font-size: 0.62rem;
-  letter-spacing: 0.24em;
-  color: rgb(207 238 248 / 0.5);
-  min-height: 1em;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .city-boot-mark i { animation: none; transform: scaleY(0.6); }
-  body > .city-boot { transition: none; }
-}
+.city:not(.is-stage) .reveal { opacity: 1; transform: none; }
