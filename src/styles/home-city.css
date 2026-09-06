@@ -64,9 +64,6 @@ body > .city-stage { position: fixed; }
 .city-vista { display: none; }
 .city.is-stage .city-vista { display: grid; position: relative; z-index: 2; min-height: 75svh; place-items: end center; padding-bottom: 10svh; }
 .city.is-stage .city-vista-build { min-height: 120svh; }
-.city-scene-caption { display: grid; gap: .75rem; text-align: center; color: #d4e2df; text-shadow: 0 2px 12px #030b12; }
-.city-scene-caption span:first-child { font-family: 'JetBrains Mono Variable', monospace; font-size: .58rem; letter-spacing: .42em; }
-.city-scene-caption span:last-child { font-size: .75rem; letter-spacing: .3em; font-weight: 300; }
 .city-scroll-invitation { display: none; }
 .city.is-stage .city-scroll-invitation { display: flex; position: absolute; bottom: 2.5rem; left: 0; gap: 1.5rem; align-items: center; font: .56rem 'JetBrains Mono Variable', monospace; letter-spacing: .2em; color: #d3dfda; }
 .city-scroll-invitation span { font-size: 1.4rem; }
