@@ -20,6 +20,7 @@ const fmt = (d: Date) =>
           <a href={`/slides/${deck.slug}/`} data-no-swup>
             <div class="deck-row">
               <time class="deck-date">{fmt(deck.data.published)}</time>
+              {deck.data.draft && <span class="deck-private">draft</span>}
               {deck.data.event && <span class="deck-event">{deck.data.event}</span>}
               <span class="deck-theme">{deck.data.theme}</span>
             </div>
@@ -66,6 +67,13 @@ const fmt = (d: Date) =>
   .deck-event
     color: var(--primary)
     padding: 0
+  .deck-private
+    font-size: 0.7rem
+    font-weight: 700
+    color: #fff
+    background: #c0392b
+    padding: 0.12rem 0.45rem
+    border-radius: 2px
   .deck-theme
     color: rgba(140, 140, 140, 0.95)
     padding: 0.12rem 0.45rem
